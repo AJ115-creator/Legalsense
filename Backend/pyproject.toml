@@ -1,0 +1,37 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.135.2",
+    "httpx==0.28.1",
+    "langchain==1.2.13",
+    "langchain-community==0.4.1",
+    "langchain-groq==1.1.2",
+    "pydantic==2.12.2",
+    "pydantic-settings==2.13.1",
+    "pyjwt[crypto]==2.12.1",
+    "pypdf==6.9.2",
+    "python-dotenv==1.2.2",
+    "python-multipart==0.0.22",
+    "supabase==2.28.3",
+    "uvicorn[standard]==0.42.0",
+    "websockets>=11.0,<16",
+    "pinecone[grpc]>=8.1.0",
+    "datasets>=4.8.4",
+    "pdfplumber>=0.11.9",
+    "sentry-sdk>=2.57.0",
+    "slowapi>=0.1.9",
+    "redis>=7.4.0",
+    "langfuse>=4.0.6",
+    "fastembed>=0.8.0",
+    "ragas>=0.4.3,<0.5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "ruff>=0.9.9",
+]

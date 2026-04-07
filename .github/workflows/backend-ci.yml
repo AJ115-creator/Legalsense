@@ -1,0 +1,55 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'Backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend
+
+    env:
+      # Mock Secrets for App Initialization in CI
+      GROQ_API_KEY: "gsk_test_mock_12345"
+      SUPABASE_URL: "https://example.supabase.co"
+      SUPABASE_KEY: "mock-key"
+      SUPABASE_SERVICE_KEY: "mock-service-key"
+      CLERK_ALLOWED_ISSUERS: "https://clerk.example.com"
+      SUPABASE_JWT_SECRET: "mock-jwt-secret"
+      PINECONE_API_KEY: "mock-pc-key"
+      PINECONE_INDEX: "legalsense"
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.x"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "Backend/.python-version"
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Lint with Ruff
+        run: uv run ruff check .
+
+      - name: Run Tests
+        run: uv run pytest

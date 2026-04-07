@@ -1,0 +1,44 @@
+name: RAG Evaluation Batch
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours
+  workflow_dispatch:         # manual "Run workflow" button
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies
+        working-directory: ./Backend
+        run: uv sync --frozen
+
+      - name: Run Ragas eval batch
+        working-directory: ./Backend
+        env:
+          # Langfuse — fetch traces, push scores
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_BASE_URL: https://cloud.langfuse.com
+          # Groq — judge LLM
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: llama-3.3-70b-versatile
+          # Redis — eval data lookup (must be public URL, not Railway internal)
+          REDIS_URL: ${{ secrets.REDIS_URL_PUBLIC }}
+          # Settings module requires these even though the script doesn't use them
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+          CLERK_ALLOWED_ISSUERS: ${{ secrets.CLERK_ALLOWED_ISSUERS }}
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          PINECONE_INDEX: legalsense
+        run: uv run python -m scripts.run_eval_batch --limit 20

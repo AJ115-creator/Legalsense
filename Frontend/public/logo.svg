@@ -1,0 +1,21 @@
+<svg width="200" height="48" viewBox="0 0 200 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Balance scale icon -->
+  <!-- Vertical pillar -->
+  <path d="M24 6V42" stroke="#a37764" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Base -->
+  <path d="M16 42H32" stroke="#a37764" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Balance beam -->
+  <path d="M8 16L24 10L40 16" stroke="#a37764" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Left scale pan -->
+  <path d="M4 16C4 16 6 26 12 26C18 26 20 16 20 16" stroke="#a37764" stroke-width="2" stroke-linecap="round"/>
+  <!-- Right scale pan -->
+  <path d="M28 16C28 16 30 26 36 26C42 26 44 16 44 16" stroke="#a37764" stroke-width="2" stroke-linecap="round"/>
+  <!-- Digital accent dots -->
+  <circle cx="12" cy="20" r="1" fill="#a37764"/>
+  <circle cx="36" cy="20" r="1" fill="#a37764"/>
+  <circle cx="24" cy="8" r="1.5" fill="#a37764"/>
+  <!-- Text: Legal -->
+  <text x="52" y="32" font-family="Georgia, serif" font-size="24" font-weight="bold" fill="#56453f">Legal</text>
+  <!-- Text: Sense -->
+  <text x="115" y="32" font-family="Georgia, serif" font-size="24" font-weight="bold" fill="#a37764">Sense</text>
+</svg>
