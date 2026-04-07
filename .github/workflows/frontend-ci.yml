@@ -48,7 +48,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
-          version: "0.5.x"
+          enable-cache: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -65,8 +65,9 @@ jobs:
           CLERK_ALLOWED_ISSUERS: "https://clerk.example.com"
           SUPABASE_JWT_SECRET: "mock"
           PINECONE_API_KEY: "mock"
+          PINECONE_INDEX: "legalsense"
         run: |
-          uv sync
+          uv sync --frozen
           uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 &
 
       # 2. Setup Frontend
@@ -84,7 +85,12 @@ jobs:
       - name: Build and Start Frontend Preview
         working-directory: Frontend
         env:
-          VITE_CLERK_PUBLISHABLE_KEY: "pk_test_mock_ci_key"
+          # Real Clerk test key required — fake strings crash ClerkProvider at boot.
+          # Add at: repo Settings → Secrets and variables → Actions → VITE_CLERK_PUBLISHABLE_KEY_TEST
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY_TEST }}
+          # vite preview has NO dev proxy — point the SPA at the local backend explicitly
+          VITE_API_BASE_URL: "http://localhost:8000"
+          VITE_WS_BASE_URL: "ws://localhost:8000"
         run: |
           npm run build
           npm run preview -- --port 5173 &

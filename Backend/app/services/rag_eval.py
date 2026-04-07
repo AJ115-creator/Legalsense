@@ -15,20 +15,25 @@ Notes:
 """
 
 import warnings
+
+# Must run before ragas import — ragas.metrics legacy API emits a
+# DeprecationWarning at import time. noqa: E402 on the imports below.
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="ragas")
 
-import logging
-from langchain_groq import ChatGroq
-from langchain_community.embeddings import FastEmbedEmbeddings
-from ragas import evaluate, EvaluationDataset
-from ragas.metrics import (
+import logging  # noqa: E402
+
+from langchain_community.embeddings import FastEmbedEmbeddings  # noqa: E402
+from langchain_groq import ChatGroq  # noqa: E402
+from ragas import EvaluationDataset, evaluate  # noqa: E402
+from ragas.embeddings import LangchainEmbeddingsWrapper  # noqa: E402
+from ragas.llms import LangchainLLMWrapper  # noqa: E402
+from ragas.metrics import (  # noqa: E402
     Faithfulness,
-    ResponseRelevancy,
     LLMContextPrecisionWithoutReference,
+    ResponseRelevancy,
 )
-from ragas.llms import LangchainLLMWrapper
-from ragas.embeddings import LangchainEmbeddingsWrapper
-from app.core.config import settings
+
+from app.core.config import settings  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
