@@ -52,7 +52,9 @@ async def health():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    try:
-        feedback.langfuse.flush()
-    except Exception:
-        pass
+    # Only flush if the lazy singleton was actually built during this process's lifetime
+    if feedback._langfuse is not None:
+        try:
+            feedback._langfuse.flush()
+        except Exception:
+            pass

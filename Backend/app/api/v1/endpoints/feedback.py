@@ -6,11 +6,21 @@ from app.core.config import settings
 from app.core.rate_limiter import limiter
 
 router = APIRouter()
-langfuse = Langfuse(
-    public_key=settings.LANGFUSE_PUBLIC_KEY,
-    secret_key=settings.LANGFUSE_SECRET_KEY,
-    host=settings.LANGFUSE_BASE_URL,
-)
+
+# Lazy singleton — instantiating Langfuse at import time with empty creds
+# (CI mocks, local dev without observability) hangs uvicorn boot.
+_langfuse: Langfuse | None = None
+
+
+def get_langfuse() -> Langfuse:
+    global _langfuse
+    if _langfuse is None:
+        _langfuse = Langfuse(
+            public_key=settings.LANGFUSE_PUBLIC_KEY,
+            secret_key=settings.LANGFUSE_SECRET_KEY,
+            host=settings.LANGFUSE_BASE_URL,
+        )
+    return _langfuse
 
 
 class FeedbackRequest(BaseModel):
@@ -25,7 +35,7 @@ async def submit_feedback(
     body: FeedbackRequest,
     user_id: str = Depends(get_current_user),
 ):
-    langfuse.create_score(
+    get_langfuse().create_score(
         trace_id=body.trace_id,
         name="user-feedback",
         value=body.score,
