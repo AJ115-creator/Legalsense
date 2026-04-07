@@ -100,10 +100,11 @@ jobs:
             > "$GITHUB_WORKSPACE/frontend.log" 2>&1 &
 
       # 3. Wait for services to be ready (60s ceiling — was hanging 40+ min on silent crash)
+      # http-get:// forces GET — default HEAD returns 405 against FastAPI's @app.get routes
       - name: Wait for Backend and Frontend
         timeout-minutes: 2
         run: |
-          npx wait-on -t 60000 http://localhost:8000/health http://localhost:5173
+          npx wait-on -t 60000 http-get://localhost:8000/health http-get://localhost:5173
 
       # 4. Run Puppeteer E2E Tests
       - name: Run Puppeteer E2E
