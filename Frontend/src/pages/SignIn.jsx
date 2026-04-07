@@ -22,6 +22,16 @@ const GitHubIcon = () => (
   </svg>
 )
 
+// Top-level so it doesn't get re-created on every parent render (React state would reset).
+const DocLines = ({ count, widths }) =>
+  Array.from({ length: count }, (_, i) => (
+    <div
+      key={i}
+      className="h-1.5 rounded-full bg-primary/20"
+      style={{ width: widths?.[i] ?? (i === 0 ? '68%' : i % 3 === 0 ? '52%' : '100%') }}
+    />
+  ))
+
 // Floating legal document fragment decorations for background atmosphere
 const FloatingDocFragments = () => {
   const ref = useRef()
@@ -41,15 +51,6 @@ const FloatingDocFragments = () => {
       })
     })
   }, { scope: ref })
-
-  const DocLines = ({ count, widths }) =>
-    Array.from({ length: count }, (_, i) => (
-      <div
-        key={i}
-        className="h-1.5 rounded-full bg-primary/20"
-        style={{ width: widths?.[i] ?? (i === 0 ? '68%' : i % 3 === 0 ? '52%' : '100%') }}
-      />
-    ))
 
   return (
     <div ref={ref} className="absolute inset-0 pointer-events-none overflow-hidden">

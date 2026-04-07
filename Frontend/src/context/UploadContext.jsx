@@ -18,6 +18,7 @@ export function UploadProvider({ children }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useUpload() {
   const ctx = useContext(UploadContext)
   if (!ctx) throw new Error('useUpload must be used within UploadProvider')
