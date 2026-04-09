@@ -28,6 +28,12 @@ dependencies = [
     "langfuse>=4.0.6",
     "fastembed>=0.8.0",
     "ragas>=0.4.3,<0.5",
+    # OCR fallback for scanned / Hindi legal PDFs.
+    # Pinned exactly: 3.0.1 has an MKLDNN memory leak with device=cpu (Issue #15631).
+    # 3.3.3 (Jan 2026) is post-fix and battle-tested.
+    "paddleocr==3.3.3",
+    "paddlepaddle==3.1.1",
+    "pdf2image>=1.17.0",
 ]
 
 [dependency-groups]
@@ -35,6 +41,18 @@ dev = [
     "pytest>=9.0.2",
     "ruff>=0.9.9",
 ]
+
+# Pull paddlepaddle from the official CPU wheel index instead of PyPI.
+# The default PyPI wheel pulls CUDA (~3GB); the CPU build is ~600MB.
+# `explicit = true` scopes this index to paddlepaddle only — every other
+# package still resolves from PyPI normally.
+[tool.uv.sources]
+paddlepaddle = { index = "paddle-cpu" }
+
+[[tool.uv.index]]
+name = "paddle-cpu"
+url = "https://www.paddlepaddle.org.cn/packages/stable/cpu/"
+explicit = true
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

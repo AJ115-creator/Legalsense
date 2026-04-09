@@ -4,9 +4,20 @@ from supabase import create_client, Client
 from supabase.lib.client_options import SyncClientOptions
 from app.core.config import settings
 
+# Cached singleton — service-key client never changes between calls and the
+# create_client() call sets up an httpx session that we'd otherwise tear down
+# and rebuild on every background task.
+_admin_client: Client | None = None
+
+
 def get_supabase_admin() -> Client:
     """Lazy-load the admin client (bypasses RLS). ONLY for background tasks."""
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
+    global _admin_client
+    if _admin_client is None:
+        _admin_client = create_client(
+            settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY
+        )
+    return _admin_client
 
 
 def get_user_client(user_id: str) -> Client:

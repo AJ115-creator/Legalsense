@@ -9,25 +9,29 @@ from app.core.config import settings
 from app.db.supabase_client import get_supabase_admin, get_user_client
 from app.models.document import DocumentListItem, DocumentAnalysis, UploadResponse
 from app.services.pdf_extractor import extract_text
-from app.services.ai_analysis import analyze_document
+from app.services.ai_analysis import analyze_document, classify_legal_document
 from app.services.chunking_service import chunk_document, build_records
 from app.services import pinecone_service
 
 router = APIRouter()
 
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+CHUNK_SIZE = 1024 * 1024            # 1 MB streaming read granularity
 
-def _run_analysis_sync(doc_id: str, user_id: str, file_bytes: bytes, upload_date: str):
+
+def _run_analysis_sync(doc_id: str, user_id: str, text: str, pages: int, upload_date: str):
     """Background task wrapper — runs async analysis in a new event loop."""
-    asyncio.run(_run_analysis(doc_id, user_id, file_bytes, upload_date))
+    asyncio.run(_run_analysis(doc_id, user_id, text, pages, upload_date))
 
 
-async def _run_analysis(doc_id: str, user_id: str, file_bytes: bytes, upload_date: str):
-    """Extract PDF text, chunk + upsert to Pinecone, run AI analysis, update DB.
+async def _run_analysis(doc_id: str, user_id: str, text: str, pages: int, upload_date: str):
+    """Chunk + upsert to Pinecone, run AI analysis, update DB.
 
-    Uses supabase_admin (service key) because background tasks have no user context.
+    Text + pages are pre-extracted in the upload endpoint (so the classifier
+    can read them sync). Uses supabase_admin (service key) because background
+    tasks have no user context.
     """
     try:
-        text, pages = extract_text(file_bytes)
         get_supabase_admin().table("documents").update(
             {"extracted_text": text, "pages": pages}
         ).eq("id", doc_id).execute()
@@ -67,9 +71,50 @@ async def upload_document(
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "Only PDF files accepted")
 
-    file_bytes = await file.read()
-    if len(file_bytes) > 10 * 1024 * 1024:
-        raise HTTPException(400, "File size exceeds 10MB limit")
+    # Layer 1 — fast-fail on Content-Length header (cheap, catches honest clients)
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            413,
+            f"File size exceeds {MAX_UPLOAD_SIZE // (1024 * 1024)}MB limit",
+        )
+
+    # Layer 2 — stream the body in chunks, abort if accumulated size exceeds limit.
+    # Defends against clients that lie about / omit Content-Length.
+    chunks: list[bytes] = []
+    total = 0
+    while chunk := await file.read(CHUNK_SIZE):
+        total += len(chunk)
+        if total > MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                413,
+                f"File size exceeds {MAX_UPLOAD_SIZE // (1024 * 1024)}MB limit",
+            )
+        chunks.append(chunk)
+    file_bytes = b"".join(chunks)
+
+    # Magic-byte gate — defends against renamed .exe/.zip with .pdf extension
+    if not file_bytes.startswith(b"%PDF"):
+        raise HTTPException(400, "File is not a valid PDF")
+
+    # Extract text on the sync path so the classifier has something to read.
+    # pypdf is sync — wrap in threadpool to not block the event loop. The
+    # PaddleOCR fallback inside extract_text inherits this wrap automatically.
+    try:
+        text, pages = await asyncio.to_thread(extract_text, file_bytes)
+    except Exception:
+        raise HTTPException(
+            400,
+            "Could not read PDF — file may be corrupted or password-protected",
+        )
+
+    # Legal-domain content gate — rejects non-legal PDFs before any storage write.
+    is_legal, _reason = await classify_legal_document(text)
+    if not is_legal:
+        raise HTTPException(
+            400,
+            "Please upload a legal document. This does not seem like a legal document to me.",
+        )
 
     doc_id = str(uuid.uuid4())
     file_path = f"{user_id}/{doc_id}.pdf"
@@ -90,7 +135,7 @@ async def upload_document(
                 "type": "Unknown",
                 "date": upload_date,
                 "status": "pending",
-                "pages": 0,
+                "pages": pages,
                 "file_path": file_path,
             }
         ).execute()
@@ -98,8 +143,9 @@ async def upload_document(
     except Exception as e:
         raise HTTPException(500, f"Upload failed: {str(e)}")
 
-    # Background analysis uses admin client (no user context in thread)
-    background_tasks.add_task(_run_analysis_sync, doc_id, user_id, file_bytes, upload_date)
+    # Background analysis uses admin client (no user context in thread).
+    # Pass pre-extracted text + pages so the background task doesn't re-parse the PDF.
+    background_tasks.add_task(_run_analysis_sync, doc_id, user_id, text, pages, upload_date)
 
     return UploadResponse(id=doc_id, status="pending", message="Upload successful, analysis started")
 

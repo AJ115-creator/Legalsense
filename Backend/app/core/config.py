@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     HUGGINGFACE_API_KEY: str = ""
 
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    # Separate model for the legal-doc classifier — independent rate-limit pool on Groq
+    # (per-model pools, not per-key), 12x cheaper input/output, deterministic temp=0.0.
+    GROQ_CLASSIFIER_MODEL: str = "llama-3.1-8b-instant"
     STORAGE_BUCKET: str = "legal-documents"
     CHAT_HISTORY_LIMIT: int = 50
 
@@ -44,6 +47,15 @@ class Settings(BaseSettings):
     @property
     def allowed_issuers(self) -> list[str]:
         return [s.strip().rstrip("/") for s in self.CLERK_ALLOWED_ISSUERS.split(",") if s.strip()]
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        """Parse FRONTEND_URL as comma-separated CORS origin allowlist.
+
+        A single value (e.g. "https://legalsense.dev") still works — split returns
+        a one-element list, so the env var is backwards compatible.
+        """
+        return [s.strip().rstrip("/") for s in self.FRONTEND_URL.split(",") if s.strip()]
 
     model_config = {
         "env_file": str(Path(__file__).resolve().parent.parent.parent / ".env"),

@@ -247,11 +247,10 @@ async def stream_chat_response(
             messages,
             config={
                 "run_id": trace_id,
-                "callbacks": [LangfuseCallbackHandler(
-                    public_key=settings.LANGFUSE_PUBLIC_KEY,
-                    secret_key=settings.LANGFUSE_SECRET_KEY,
-                    host=settings.LANGFUSE_BASE_URL,
-                )],
+                # Langfuse v3: CallbackHandler() takes no credential args.
+                # It auto-discovers the global Langfuse() client warmed at app
+                # startup in main.py (via feedback.get_langfuse()).
+                "callbacks": [LangfuseCallbackHandler()],
                 "metadata": {
                     "langfuse_user_id": user_id,
                     "langfuse_session_id": f"{user_id}:{document_id}",

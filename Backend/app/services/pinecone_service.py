@@ -13,10 +13,17 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Cached singleton — Pinecone() does auth + connection setup; Index() pulls
+# host config. Re-running both per call wasted ~100ms on every search/upsert.
+_index = None
+
+
 def _get_index():
-    """Lazy-load the Pinecone index."""
-    pc = Pinecone(api_key=settings.PINECONE_API_KEY)
-    return pc.Index(settings.PINECONE_INDEX)
+    global _index
+    if _index is None:
+        pc = Pinecone(api_key=settings.PINECONE_API_KEY)
+        _index = pc.Index(settings.PINECONE_INDEX)
+    return _index
 
 BATCH_SIZE = 96  # Pinecone integrated embedding limit per batch
 SCORE_THRESHOLD = 0.0  # Reranker scores are near-zero floats (e.g. 0.004); no hard cutoff
