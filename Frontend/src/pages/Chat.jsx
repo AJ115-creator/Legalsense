@@ -95,13 +95,33 @@ const Chat = () => {
   const [connected, setConnected] = useState(false)
   const wsRef = useRef(null)
   const streamBufferRef = useRef('')
-  const messagesEndRef = useRef(null)
+  const chatContainerRef = useRef(null)
+  const lastUserMsgRef = useRef(null)
+  const shouldAutoScrollRef = useRef(true)
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  // Check if user is near the bottom of the chat container
+  const isNearBottom = () => {
+    const el = chatContainerRef.current
+    if (!el) return true
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 150
   }
 
-  useEffect(scrollToBottom, [messages])
+  // When user sends a message, scroll their message into view
+  useEffect(() => {
+    if (lastUserMsgRef.current) {
+      lastUserMsgRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }
+  }, [messages.length]) // only on new message count changes
+
+  // During streaming tokens, only auto-scroll if user is already near bottom
+  useEffect(() => {
+    if (streaming && shouldAutoScrollRef.current) {
+      const el = chatContainerRef.current
+      if (el) {
+        el.scrollTop = el.scrollHeight
+      }
+    }
+  }, [messages, streaming])
 
   useEffect(() => {
     let ws
@@ -147,6 +167,7 @@ const Chat = () => {
             case 'stream_start':
               setStreaming(true)
               streamBufferRef.current = ''
+              shouldAutoScrollRef.current = isNearBottom()
               setMessages(prev => [...prev, { role: 'assistant', content: '' }])
               break
             case 'token':
@@ -225,22 +246,26 @@ const Chat = () => {
         </div>
 
         {/* Messages */}
-        <Card glass className="flex-1 min-h-0 overflow-y-auto p-4 mb-4">
+        <Card glass className="flex-1 min-h-0 overflow-y-auto p-4 mb-4" ref={chatContainerRef}>
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
               Ask a question about your document to get started.
             </div>
           ) : (
             <div className="space-y-3">
-              {messages.map((msg, i) => (
-                <ChatBubble key={i} message={msg} getToken={getToken} />
-              ))}
+              {messages.map((msg, i) => {
+                const isLastUser = msg.role === 'user' && !messages.slice(i + 1).some(m => m.role === 'user')
+                return (
+                  <div key={i} ref={isLastUser ? lastUserMsgRef : null}>
+                    <ChatBubble message={msg} getToken={getToken} />
+                  </div>
+                )
+              })}
               {streaming && (
                 <div className="flex justify-start">
                   <Spinner className="w-4 h-4" />
                 </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
           )}
         </Card>
