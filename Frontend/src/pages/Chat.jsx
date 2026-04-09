@@ -230,7 +230,7 @@ const Chat = () => {
   return (
     <div className="py-8 px-4 relative overflow-hidden h-[calc(100vh-4rem)] flex flex-col">
       <AuroraGradient blobs={[{ pos: 'top-1/4 left-1/3', size: 'w-64 h-64', color: 'bg-primary/5' }]} />
-      <div className="max-w-3xl mx-auto w-full flex flex-col flex-1 min-h-0">
+      <div className="max-w-5xl mx-auto w-full flex flex-col flex-1 min-h-0">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
           <Link

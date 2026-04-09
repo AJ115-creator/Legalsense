@@ -114,7 +114,7 @@ def _build_system_context(
     user_chunks: list[dict],
     legal_chunks: list[dict],
 ) -> str:
-    """Build system prompt with RAG context and anti-hallucination rules."""
+    """Build system prompt with RAG context and strict document-only guardrails."""
     user_context = _format_user_chunks(user_chunks)
     legal_context = _format_legal_chunks(legal_chunks)
 
@@ -124,24 +124,44 @@ def _build_system_context(
     confidence_note = ""
     if avg_user < pinecone_service.LOW_CONFIDENCE_THRESHOLD and avg_legal < pinecone_service.LOW_CONFIDENCE_THRESHOLD:
         confidence_note = (
-            "\n**NOTE: The retrieved context has low relevance to the query. "
-            "Be extra cautious — only state what is explicitly supported by the context. "
-            "Prefer saying you don't have enough information over guessing.**\n"
+            "\n**CRITICAL: The retrieved context has LOW relevance to the user's query. "
+            "This very likely means the question is OFF-TOPIC. "
+            "Refuse the question using the refusal template below.**\n"
         )
 
     return (
-        "You are a legal document assistant analyzing a specific document for the user.\n"
-        "You are NOT a licensed lawyer. This is AI-assisted analysis, not legal advice.\n\n"
-        "STRICT RULES:\n"
-        "- For questions directly answered by the provided context, answer ONLY from that context.\n"
-        "- If a legal act or concept is mentioned in the document but its details are not in the "
-        "context, provide a brief factual overview (4-6 sentences) from your general legal knowledge. "
-        "Clearly state it is general background, not document-specific analysis.\n"
-        "- Never fabricate specific section numbers, case names, or provisions not in the context.\n"
-        "- For each law you cite from context, include [Source: Act Name, Section X] inline.\n"
-        "- Always end responses with a recommendation to consult a qualified lawyer for specific advice.\n"
-        "- Do NOT speculate about facts specific to the user's case.\n"
-        f"{confidence_note}\n"
+        "You are a STRICT legal document assistant. Your ONLY purpose is to help the user "
+        "understand the specific document they uploaded and the laws/legal provisions referenced in it.\n\n"
+
+        "═══════════════════════════════════════\n"
+        "ABSOLUTE RULES — NEVER VIOLATE THESE:\n"
+        "═══════════════════════════════════════\n"
+        "1. ONLY answer questions that are DIRECTLY about the uploaded document content, "
+        "its legal provisions, the parties involved, clauses, sections, or terms within it.\n"
+        "2. NEVER answer general knowledge questions, trivia, or anything unrelated to this document. "
+        "This includes questions about technology, companies, people, history, science, current events, "
+        "or ANY topic not explicitly covered in the document context below.\n"
+        "3. If the user's question is NOT answerable from the document context provided below, "
+        "you MUST refuse. Use this exact template:\n"
+        '   "I can only help with questions about your uploaded document and the legal provisions '
+        'it references. Your question doesn\'t appear to relate to this document. '
+        'Please ask something about your document\'s content, clauses, or legal implications."\n'
+        "4. Do NOT try to connect unrelated topics to the document. If someone asks about Facebook, "
+        "cooking, sports, or anything outside the document scope — refuse, even if you could loosely "
+        "relate it to a legal concept.\n"
+        "5. NEVER use external knowledge to answer questions. You may ONLY use the CONTEXT sections below.\n"
+        "6. For each legal provision you cite from context, include [Source: Act Name, Section X] inline.\n"
+        "7. Never fabricate section numbers, case names, or provisions not present in the context.\n"
+        "8. You are NOT a licensed lawyer. Always end substantive legal answers with a recommendation "
+        "to consult a qualified lawyer.\n"
+        "9. Do NOT speculate about facts specific to the user's case beyond what the document states.\n\n"
+
+        "RELEVANCE TEST — Apply this BEFORE answering:\n"
+        "  → Is the question about the document's content, parties, terms, or legal provisions? → ANSWER\n"
+        "  → Is the question about a general topic, even if vaguely law-related? → REFUSE\n"
+        "  → Is the question about something not mentioned in the CONTEXT below? → REFUSE\n\n"
+
+        f"{confidence_note}"
         f"Document: {doc.get('title', 'Untitled')}\n"
         f"Type: {doc.get('type', 'Unknown')}\n"
         f"Summary: {doc.get('summary', 'No summary available')}\n\n"
@@ -150,7 +170,8 @@ def _build_system_context(
         "=== RELEVANT INDIAN LEGAL PROVISIONS ===\n"
         f"{legal_context}\n\n"
         "---\n"
-        "Respond helpfully. Prioritize context above; use general knowledge only for brief background on referenced acts/concepts."
+        "REMEMBER: If the question is not about this document or its legal provisions, REFUSE. "
+        "Do not attempt to answer. Do not provide general information."
     )
 
 
@@ -220,13 +241,34 @@ async def stream_chat_response(
         # No-context fallback
         if not user_chunks and not legal_chunks:
             fallback = (
-                "I couldn't find relevant information in your document or legal database "
-                "for this question. Please try rephrasing, or consult a qualified lawyer."
+                "I can only help with questions about your uploaded document and "
+                "the legal provisions it references. Your question doesn't appear "
+                "to relate to this document. Please ask something about your "
+                "document's content, clauses, or legal implications."
                 f"{DISCLAIMER}"
             )
             save_message(document_id, user_id, "user", user_message)
             save_message(document_id, user_id, "assistant", fallback)
             yield fallback
+            return
+
+        # Pre-generation relevance gate — bypass LLM if context is irrelevant
+        avg_user = pinecone_service.avg_score(user_chunks)
+        avg_legal = pinecone_service.avg_score(legal_chunks)
+        if avg_user < pinecone_service.LOW_CONFIDENCE_THRESHOLD and avg_legal < pinecone_service.LOW_CONFIDENCE_THRESHOLD:
+            logger.info(
+                f"Off-topic gate triggered: avg_user={avg_user:.4f}, avg_legal={avg_legal:.4f}"
+            )
+            refusal = (
+                "I can only help with questions about your uploaded document and "
+                "the legal provisions it references. Your question doesn't appear "
+                "to relate to this document. Please ask something about your "
+                "document's content, clauses, or legal implications."
+                f"{DISCLAIMER}"
+            )
+            save_message(document_id, user_id, "user", user_message)
+            save_message(document_id, user_id, "assistant", refusal)
+            yield refusal
             return
 
         # Build message list
