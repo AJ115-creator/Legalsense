@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "deploy": {
+    "aptPackages": [
+      "poppler-utils",
+      "libgl1",
+      "libglib2.0-0"
+    ]
+  }
+}
