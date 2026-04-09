@@ -1,3 +1,4 @@
+import logging
 import uuid
 import asyncio
 from datetime import date
@@ -12,6 +13,8 @@ from app.services.pdf_extractor import extract_text
 from app.services.ai_analysis import analyze_document, classify_legal_document
 from app.services.chunking_service import chunk_document, build_records
 from app.services import pinecone_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -102,11 +105,16 @@ async def upload_document(
     # PaddleOCR fallback inside extract_text inherits this wrap automatically.
     try:
         text, pages = await asyncio.to_thread(extract_text, file_bytes)
-    except Exception:
+    except Exception as e:
+        # Log the full stack trace — Sentry's LoggingIntegration forwards this
+        # as an event, and Railway stdout captures it for log-tail debugging.
+        # Without this, the bare except was swallowing real OCR / pypdf errors
+        # and collapsing every failure mode into the same opaque 400.
+        logger.exception("PDF extraction failed for file=%s", file.filename)
         raise HTTPException(
             400,
             "Could not read PDF — file may be corrupted or password-protected",
-        )
+        ) from e
 
     # Legal-domain content gate — rejects non-legal PDFs before any storage write.
     is_legal, _reason = await classify_legal_document(text)
