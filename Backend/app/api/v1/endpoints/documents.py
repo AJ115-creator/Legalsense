@@ -182,7 +182,10 @@ async def get_document(request: Request, doc_id: str, user_id: str = Depends(get
         return {"status": "pending", "message": "Analysis in progress"}
 
     if d["status"] == "error":
-        raise HTTPException(500, d.get("summary", "Analysis failed"))
+        # Server is fine — the doc itself failed analysis. Return 200 with an
+        # error envelope so the frontend can render a friendly state instead
+        # of a 500 → "Document Not Found" dead-end.
+        return {"status": "error", "message": d.get("summary", "Analysis failed")}
 
     return DocumentAnalysis(
         title=d["title"],

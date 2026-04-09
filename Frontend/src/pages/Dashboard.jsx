@@ -21,8 +21,14 @@ const DocumentCard = ({ doc }) => (
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <Badge variant={doc.status === 'analyzed' ? 'success' : 'warning'}>
-          {doc.status === 'analyzed' ? 'Analyzed' : 'Pending'}
+        <Badge variant={
+          doc.status === 'analyzed' ? 'success' :
+          doc.status === 'error'    ? 'destructive' :
+                                      'warning'
+        }>
+          {doc.status === 'analyzed' ? 'Analyzed' :
+           doc.status === 'error'    ? 'Failed' :
+                                       'Pending'}
         </Badge>
         <ChevronRightIcon size={16} />
       </div>

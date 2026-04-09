@@ -13,7 +13,7 @@ class DocumentListItem(BaseModel):
     title: str
     type: str
     date: str
-    status: str  # pending | analyzed
+    status: str  # pending | analyzed | error
     pages: int
 
 

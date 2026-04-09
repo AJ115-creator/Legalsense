@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
 import { apiFetch } from '../services/api'
 import Badge from '../components/ui/Badge'
@@ -28,10 +28,12 @@ const DocumentHeader = ({ data }) => (
 const Results = () => {
   const { id } = useParams()
   const { getToken } = useAuth()
+  const navigate = useNavigate()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -46,6 +48,10 @@ const Results = () => {
           setPending(true)
           setLoading(false)
           timer = setTimeout(poll, 3000)
+        } else if (result.status === 'error') {
+          setError(result.message || 'Analysis failed')
+          setPending(false)
+          setLoading(false)
         } else {
           setData(result)
           setPending(false)
@@ -64,6 +70,17 @@ const Results = () => {
       if (timer) clearTimeout(timer)
     }
   }, [id, getToken])
+
+  const handleDeleteAndRetry = async () => {
+    setDeleting(true)
+    try {
+      await apiFetch(`/documents/${id}`, { method: 'DELETE' }, getToken)
+      navigate('/upload')
+    } catch (e) {
+      setError(e.message || 'Delete failed')
+      setDeleting(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -86,9 +103,14 @@ const Results = () => {
   if (error || !data) {
     return (
       <div className="py-20 text-center">
-        <h2 className="font-serif text-2xl font-bold mb-4">Document Not Found</h2>
-        <p className="text-muted-foreground mb-6">{error || "We couldn't find analysis results for this document."}</p>
-        <Link to="/dashboard"><Button>Back to Dashboard</Button></Link>
+        <h2 className="font-serif text-2xl font-bold mb-4">Analysis Failed</h2>
+        <p className="text-muted-foreground mb-6">{error || "We couldn't load analysis results for this document."}</p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link to="/dashboard"><Button variant="secondary">Back to Dashboard</Button></Link>
+          <Button onClick={handleDeleteAndRetry} disabled={deleting}>
+            {deleting ? 'Deleting…' : 'Delete and try again'}
+          </Button>
+        </div>
       </div>
     )
   }

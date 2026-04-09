@@ -19,7 +19,12 @@ export async function apiFetch(path, options = {}, getToken) {
     res = await doFetch()
   }
   if (!res.ok) {
-    const err = new Error(`API error: ${res.status}`)
+    let detail = `Request failed (${res.status})`
+    try {
+      const body = await res.json()
+      if (body?.detail) detail = body.detail
+    } catch { /* non-JSON body (proxy 502 etc.) — keep generic */ }
+    const err = new Error(detail)
     err.status = res.status
     throw err
   }
@@ -36,7 +41,12 @@ export async function uploadDocument(file, getToken) {
     body: form,
   })
   if (!res.ok) {
-    const err = new Error('Upload failed')
+    let detail = `Upload failed (${res.status})`
+    try {
+      const body = await res.json()
+      if (body?.detail) detail = body.detail
+    } catch { /* non-JSON body (proxy 502 etc.) — keep generic */ }
+    const err = new Error(detail)
     err.status = res.status
     throw err
   }
