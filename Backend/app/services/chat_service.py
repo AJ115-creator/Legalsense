@@ -295,7 +295,7 @@ async def stream_chat_response(
     document_id: str, user_id: str, user_message: str
 ) -> tuple[str, AsyncGenerator[str, None]]:
     """Returns (trace_id, token_generator) for RAG-augmented chat."""
-    trace_id = str(uuid.uuid4())
+    trace_id = uuid.uuid4().hex  # 32 hex chars, no dashes — matches Langfuse format
 
     async def _generate() -> AsyncGenerator[str, None]:
         db = get_user_client(user_id)

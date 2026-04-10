@@ -223,5 +223,7 @@ async def delete_document(request: Request, doc_id: str, user_id: str = Depends(
     db.storage.from_(settings.STORAGE_BUCKET).remove([doc.data["file_path"]])
     pinecone_service.delete_by_prefix(f"{doc_id}_")
     await invalidate_document_cache(doc_id)
+    # Remove chat history for this document (safe even if FK cascade exists)
+    db.table("chat_messages").delete().eq("document_id", doc_id).execute()
     db.table("documents").delete().eq("id", doc_id).execute()
     return {"status": "deleted"}
