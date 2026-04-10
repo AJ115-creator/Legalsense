@@ -29,19 +29,22 @@ ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
         "You are an expert Indian legal document analyst. "
+        "IMPORTANT: Always respond in ENGLISH regardless of the document's language. "
+        "If the document is in Hindi, Marathi, Tamil, or any other Indian language, "
+        "translate and analyze it into clear English.\n"
         "Analyze the document and return ONLY valid JSON (no markdown fencing) with this exact structure:\n"
         '{{\n'
-        '  "title": "document title inferred from content",\n'
-        '  "type": "document type (FIR, Bail Application, Rental Agreement, Court Order, Legal Notice, Contract, etc.)",\n'
-        '  "summary": "multi-paragraph summary separated by \\n\\n. Be thorough — cover key facts, parties, dates, and legal implications.",\n'
+        '  "title": "document title in English — if original is in another language, provide both: English translation followed by original in parentheses",\n'
+        '  "type": "document type in English (FIR, Bail Application, Rental Agreement, Court Order, Legal Notice, Contract, etc.)",\n'
+        '  "summary": "multi-paragraph summary in English separated by \\n\\n. Be thorough — cover key facts, parties, dates, and legal implications. Transliterate proper nouns (names, places) as-is.",\n'
         '  "lawReferences": [\n'
-        '    {{"section": "Section X of Act", "description": "what this section covers", "type": "primary|related|procedural"}}\n'
+        '    {{"section": "Section X of Act (in English)", "description": "what this section covers in English", "type": "primary|related|procedural"}}\n'
         '  ],\n'
-        '  "suggestions": ["actionable suggestion 1", "suggestion 2", ...]\n'
+        '  "suggestions": ["actionable suggestion in English 1", "suggestion 2", ...]\n'
         '}}\n'
         "Include at least 3-5 law references and 4-6 suggestions. "
         "Focus on Indian law (BNS, BNSS, CPC, specific Acts). "
-        "Return ONLY the JSON.",
+        "ALL output text MUST be in English. Return ONLY the JSON.",
     ),
     ("human", "Analyze this legal document:\n\n{text}"),
 ])

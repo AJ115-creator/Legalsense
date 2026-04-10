@@ -85,6 +85,43 @@ OFFTOPIC_REFUSAL = (
     "legal provisions, or Indian law."
 )
 
+# Greetings/pleasantries — respond friendly without RAG
+_GREETING_PATTERN = re.compile(
+    r'^\s*('
+    r'h(i|ey|ello|owdy)|yo+|namaste|namaskar|'
+    r'good\s*(morning|afternoon|evening|day)|'
+    r'thanks?(\s*you)?|thank\s*u|dhanyavaad|shukriya|'
+    r'bye+|goodbye|see\s*ya|tata|alvida|'
+    r'ok(ay)?|sure|got\s*it|alright|'
+    r'how\s*are\s*you|what\'?s?\s*up|sup'
+    r')\s*[!?.]*\s*$',
+    re.IGNORECASE,
+)
+
+_GREETING_RESPONSES = {
+    "hello": "Hello! I'm your legal document assistant. Ask me anything about your uploaded document or Indian law.",
+    "thanks": "You're welcome! Let me know if you have more questions about your document.",
+    "bye": "Goodbye! Feel free to come back if you have more questions about your document.",
+    "ok": "Got it! Let me know if you need anything else about your document.",
+    "how": "I'm here to help you with your legal document! What would you like to know?",
+}
+
+
+def _get_greeting_response(query: str) -> str | None:
+    """Return friendly response for greetings, None otherwise."""
+    if not _GREETING_PATTERN.match(query):
+        return None
+    q = query.lower().strip().rstrip("!?.")
+    if any(w in q for w in ("bye", "goodbye", "tata", "alvida", "see")):
+        return _GREETING_RESPONSES["bye"]
+    if any(w in q for w in ("thank", "dhanyavaad", "shukriya")):
+        return _GREETING_RESPONSES["thanks"]
+    if any(w in q for w in ("ok", "sure", "got it", "alright")):
+        return _GREETING_RESPONSES["ok"]
+    if any(w in q for w in ("how are", "what", "sup")):
+        return _GREETING_RESPONSES["how"]
+    return _GREETING_RESPONSES["hello"]
+
 
 def _has_legal_signal(query: str) -> bool:
     """Check if query contains any legal/document-related terms."""
@@ -183,7 +220,9 @@ def _build_system_context(
 
     return (
         "You are a STRICT legal document assistant. Your ONLY purpose is to help the user "
-        "understand the specific document they uploaded and the laws/legal provisions referenced in it.\n\n"
+        "understand the specific document they uploaded and the laws/legal provisions referenced in it.\n"
+        "IMPORTANT: Always respond in ENGLISH regardless of the document's language. "
+        "If the document is in Hindi or any other Indian language, answer in clear English.\n\n"
 
         "═══════════════════════════════════════\n"
         "ABSOLUTE RULES — NEVER VIOLATE THESE:\n"
@@ -274,6 +313,14 @@ async def stream_chat_response(
             yield "Error: Document not found."
             return
 
+        # Greeting check — respond without RAG/LLM
+        greeting = _get_greeting_response(user_message)
+        if greeting:
+            save_message(document_id, user_id, "user", user_message)
+            save_message(document_id, user_id, "assistant", greeting)
+            yield greeting
+            return
+
         # Semantic cache check — skip Pinecone + LLM on hit
         cached = await check_cache(document_id, user_message)
         if cached:
@@ -346,16 +393,20 @@ async def stream_chat_response(
         save_message(document_id, user_id, "user", user_message)
 
         # Stream response with LangFuse tracing
-        # Pass trace_id directly to handler so feedback scores link correctly
+        # trace_context links our trace_id so feedback scores match
         langfuse_handler = LangfuseCallbackHandler(
-            trace_id=trace_id,
-            user_id=user_id,
-            session_id=f"{user_id}:{document_id}",
+            trace_context={"trace_id": trace_id},
         )
         full_response = ""
         async for chunk in llm.astream(
             messages,
-            config={"callbacks": [langfuse_handler]},
+            config={
+                "callbacks": [langfuse_handler],
+                "metadata": {
+                    "langfuse_user_id": user_id,
+                    "langfuse_session_id": f"{user_id}:{document_id}",
+                },
+            },
         ):
             token = chunk.content
             if token:

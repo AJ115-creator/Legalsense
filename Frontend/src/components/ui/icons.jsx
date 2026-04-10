@@ -53,6 +53,25 @@ export const ChevronRightIcon = ({ size = 16 }) => (
   </svg>
 )
 
+export const TranslateIcon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...iconProps}>
+    <path d="M5 8l6 0" />
+    <path d="M4 6l8 0" />
+    <path d="M8 6v-1a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1" />
+    <path d="M4 12c1.5-2 3.6-3.5 6-4" />
+    <path d="M12 12c-1.5-2-3.6-3.5-6-4" />
+    <path d="M14 14l3 6" />
+    <path d="M20 14l-3 6" />
+    <path d="M15 18h4" />
+  </svg>
+)
+
+export const ChevronDownIcon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+)
+
 export const Spinner = ({ className = '' }) => (
   <div className={`w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin ${className}`} />
 )

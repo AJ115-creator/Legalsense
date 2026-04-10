@@ -9,7 +9,7 @@ from slowapi import _rate_limit_exceeded_handler
 
 from app.core.config import settings
 from app.core.rate_limiter import limiter
-from app.api.v1.endpoints import documents, chat, feedback
+from app.api.v1.endpoints import documents, chat, feedback, translate
 
 # Sentry init (before app creation)
 if settings.SENTRY_DSN:
@@ -77,6 +77,9 @@ app.include_router(
 )
 app.include_router(
     feedback.router, prefix="/api/v1/feedback", tags=["feedback"]
+)
+app.include_router(
+    translate.router, prefix="/api/v1/translate", tags=["translate"]
 )
 
 
