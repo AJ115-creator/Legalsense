@@ -83,17 +83,15 @@ def evaluate_traces(traces: list[dict]) -> list[dict]:
     )
 
     metrics = [
-        Faithfulness(),
-        AnswerRelevancy(),
-        ContextPrecisionWithoutReference(),
+        Faithfulness(llm=judge_llm),
+        AnswerRelevancy(llm=judge_llm),
+        ContextPrecisionWithoutReference(llm=judge_llm),
     ]
 
     logger.info(f"Running Ragas on {len(samples)} traces with {len(metrics)} metrics")
     result = evaluate(
         dataset=dataset,
         metrics=metrics,
-        llm=judge_llm,
-        embeddings=judge_embeddings,
         show_progress=False,
         raise_exceptions=False,
     )
