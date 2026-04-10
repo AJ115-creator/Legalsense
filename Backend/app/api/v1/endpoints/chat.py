@@ -70,7 +70,7 @@ async def chat_websocket(websocket: WebSocket, document_id: str):
 
             async for token in token_stream:
                 if isinstance(token, dict) and token.get("__trace_id__"):
-                    trace_id = token["trace_id"]
+                    trace_id = token["__trace_id__"]
                 else:
                     await websocket.send_json({"type": "token", "content": token})
 
