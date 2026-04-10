@@ -12,6 +12,7 @@ Anti-hallucination layers:
   - Temperature 0.1 for strict generation
 """
 
+import re
 import uuid
 import logging
 from langchain_groq import ChatGroq
@@ -37,6 +38,57 @@ DISCLAIMER = (
     "This is AI-assisted analysis, not legal advice. "
     "Please consult a qualified lawyer for critical decisions."
 )
+
+# Regex that matches terms signaling the query is about law, legal docs, or the uploaded document.
+# If a query matches ANY of these, it's allowed through to RAG without the off-topic gate.
+_LEGAL_SIGNAL = re.compile(
+    r'\b('
+    # Legal domain
+    r'law|legal|act|section|article|clause|provision|statute|ordinance|regulation|rule|order|'
+    r'court|judge|magistrate|tribunal|bench|judiciary|justice|'
+    r'rights?|duties|obligation|liability|penalty|punishment|sentence|'
+    r'case|suit|petition|appeal|bail|hearing|trial|verdict|judgment|decree|'
+    r'offense|offence|crime|criminal|civil|penal|'
+    r'evidence|witness|testimony|affidavit|'
+    r'plaintiff|defendant|complainant|accused|petitioner|respondent|'
+    r'amendment|notification|gazette|'
+    # Indian law specific
+    r'ipc|bns|bnss|bsa|crpc|cpc|constitution|'
+    r'hindu|muslim|christian|sikh|parsi|'
+    r'indian|india|bharatiya|nyaya|sanhita|suraksha|nagarik|sakshya|'
+    r'supreme\s*court|high\s*court|district\s*court|'
+    r'fir|chargesheet|'
+    # Legal subjects
+    r'property|succession|inheritance|heir|partition|'
+    r'marriage|divorce|custody|adoption|maintenance|alimony|'
+    r'contract|agreement|deed|lease|tenant|landlord|'
+    r'arbitration|mediation|conciliation|'
+    r'compensation|damages|relief|remedy|injunction|'
+    r'consumer|grievance|'
+    r'company|corporate|director|shareholder|'
+    r'patent|copyright|trademark|'
+    r'tax|gst|'
+    r'labor|labour|employment|worker|wage|'
+    # Document reference
+    r'document|uploaded|summary|summarize|explain|paragraph|chapter|schedule|'
+    # Advisory
+    r'lawyer|advocate|attorney|consult|'
+    r'next\s*steps?|what\s*should|what\s*can\s*i\s*do|advise|advice'
+    r')\b',
+    re.IGNORECASE,
+)
+
+OFFTOPIC_REFUSAL = (
+    "I can only help with questions about your uploaded document and "
+    "Indian law. Your question doesn't appear to relate to either. "
+    "Please ask something about your document's content, clauses, "
+    "legal provisions, or Indian law."
+)
+
+
+def _has_legal_signal(query: str) -> bool:
+    """Check if query contains any legal/document-related terms."""
+    return bool(_LEGAL_SIGNAL.search(query))
 
 
 def _retrieve_context(
@@ -121,15 +173,12 @@ def _build_system_context(
     # Low-confidence warning
     avg_user = pinecone_service.avg_score(user_chunks)
     avg_legal = pinecone_service.avg_score(legal_chunks)
-    max_user = pinecone_service.max_score(user_chunks)
-    max_legal = pinecone_service.max_score(legal_chunks)
-    best_max = max(max_user, max_legal)
     confidence_note = ""
-    if (avg_user < pinecone_service.LOW_CONFIDENCE_THRESHOLD and avg_legal < pinecone_service.LOW_CONFIDENCE_THRESHOLD) or best_max < pinecone_service.HARD_REFUSAL_THRESHOLD:
+    if avg_user < pinecone_service.LOW_CONFIDENCE_THRESHOLD and avg_legal < pinecone_service.LOW_CONFIDENCE_THRESHOLD:
         confidence_note = (
-            "\n**CRITICAL: The retrieved context has LOW relevance to the user's query. "
-            "This very likely means the question is OFF-TOPIC. "
-            "You MUST refuse. Do NOT answer the question. Use the refusal template below.**\n"
+            "\n**CAUTION: The retrieved context has LOW relevance to the user's query. "
+            "If the question is not clearly about this document or Indian law, "
+            "you MUST refuse using the refusal template below. Do NOT use general knowledge.**\n"
         )
 
     return (
@@ -256,38 +305,33 @@ async def stream_chat_response(
             yield fallback
             return
 
-        # Pre-generation relevance gate — bypass LLM if context is irrelevant
-        # Two checks: avg score (overall relevance) and max score (best single match)
+        # Pre-generation relevance gate — keyword + score based
+        # If query has legal/document signals → always allow through to LLM
+        # If no signals AND low scores → hard refuse without LLM
+        has_signal = _has_legal_signal(user_message)
         avg_user = pinecone_service.avg_score(user_chunks)
         avg_legal = pinecone_service.avg_score(legal_chunks)
         max_user = pinecone_service.max_score(user_chunks)
         max_legal = pinecone_service.max_score(legal_chunks)
-        best_max = max(max_user, max_legal)
 
-        off_topic = False
-        # Gate 1: avg scores both low → likely off-topic
-        if avg_user < pinecone_service.LOW_CONFIDENCE_THRESHOLD and avg_legal < pinecone_service.LOW_CONFIDENCE_THRESHOLD:
-            off_topic = True
-        # Gate 2: even the best single result is garbage → definitely off-topic
-        if best_max < pinecone_service.HARD_REFUSAL_THRESHOLD:
-            off_topic = True
+        logger.info(
+            f"Topic gate: has_signal={has_signal}, "
+            f"avg={avg_user:.4f}/{avg_legal:.4f}, max={max_user:.4f}/{max_legal:.4f}"
+        )
 
-        if off_topic:
-            logger.info(
-                f"Off-topic gate triggered: avg_user={avg_user:.4f}, avg_legal={avg_legal:.4f}, "
-                f"max_user={max_user:.4f}, max_legal={max_legal:.4f}"
+        if not has_signal:
+            # No legal keywords — check scores as backup
+            both_avg_low = (
+                avg_user < pinecone_service.LOW_CONFIDENCE_THRESHOLD
+                and avg_legal < pinecone_service.LOW_CONFIDENCE_THRESHOLD
             )
-            refusal = (
-                "I can only help with questions about your uploaded document and "
-                "Indian law. Your question doesn't appear to relate to either. "
-                "Please ask something about your document's content, clauses, "
-                "legal provisions, or Indian law."
-                f"{DISCLAIMER}"
-            )
-            save_message(document_id, user_id, "user", user_message)
-            save_message(document_id, user_id, "assistant", refusal)
-            yield refusal
-            return
+            if both_avg_low or max(max_user, max_legal) < pinecone_service.LOW_CONFIDENCE_THRESHOLD:
+                logger.info(f"Off-topic gate triggered for: {user_message[:80]}")
+                refusal = OFFTOPIC_REFUSAL + DISCLAIMER
+                save_message(document_id, user_id, "user", user_message)
+                save_message(document_id, user_id, "assistant", refusal)
+                yield refusal
+                return
 
         # Build message list
         history = await get_chat_history(document_id, user_id)
