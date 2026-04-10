@@ -121,12 +121,15 @@ def _build_system_context(
     # Low-confidence warning
     avg_user = pinecone_service.avg_score(user_chunks)
     avg_legal = pinecone_service.avg_score(legal_chunks)
+    max_user = pinecone_service.max_score(user_chunks)
+    max_legal = pinecone_service.max_score(legal_chunks)
+    best_max = max(max_user, max_legal)
     confidence_note = ""
-    if avg_user < pinecone_service.LOW_CONFIDENCE_THRESHOLD and avg_legal < pinecone_service.LOW_CONFIDENCE_THRESHOLD:
+    if (avg_user < pinecone_service.LOW_CONFIDENCE_THRESHOLD and avg_legal < pinecone_service.LOW_CONFIDENCE_THRESHOLD) or best_max < pinecone_service.HARD_REFUSAL_THRESHOLD:
         confidence_note = (
             "\n**CRITICAL: The retrieved context has LOW relevance to the user's query. "
             "This very likely means the question is OFF-TOPIC. "
-            "Refuse the question using the refusal template below.**\n"
+            "You MUST refuse. Do NOT answer the question. Use the refusal template below.**\n"
         )
 
     return (
@@ -235,7 +238,8 @@ async def stream_chat_response(
 
         logger.info(
             f"RAG retrieval: {len(user_chunks)} user chunks, {len(legal_chunks)} legal chunks "
-            f"(avg scores: {pinecone_service.avg_score(user_chunks):.2f}, {pinecone_service.avg_score(legal_chunks):.2f})"
+            f"(avg: {pinecone_service.avg_score(user_chunks):.4f}/{pinecone_service.avg_score(legal_chunks):.4f}, "
+            f"max: {pinecone_service.max_score(user_chunks):.4f}/{pinecone_service.max_score(legal_chunks):.4f})"
         )
 
         # No-context fallback
@@ -253,17 +257,31 @@ async def stream_chat_response(
             return
 
         # Pre-generation relevance gate — bypass LLM if context is irrelevant
+        # Two checks: avg score (overall relevance) and max score (best single match)
         avg_user = pinecone_service.avg_score(user_chunks)
         avg_legal = pinecone_service.avg_score(legal_chunks)
+        max_user = pinecone_service.max_score(user_chunks)
+        max_legal = pinecone_service.max_score(legal_chunks)
+        best_max = max(max_user, max_legal)
+
+        off_topic = False
+        # Gate 1: avg scores both low → likely off-topic
         if avg_user < pinecone_service.LOW_CONFIDENCE_THRESHOLD and avg_legal < pinecone_service.LOW_CONFIDENCE_THRESHOLD:
+            off_topic = True
+        # Gate 2: even the best single result is garbage → definitely off-topic
+        if best_max < pinecone_service.HARD_REFUSAL_THRESHOLD:
+            off_topic = True
+
+        if off_topic:
             logger.info(
-                f"Off-topic gate triggered: avg_user={avg_user:.4f}, avg_legal={avg_legal:.4f}"
+                f"Off-topic gate triggered: avg_user={avg_user:.4f}, avg_legal={avg_legal:.4f}, "
+                f"max_user={max_user:.4f}, max_legal={max_legal:.4f}"
             )
             refusal = (
                 "I can only help with questions about your uploaded document and "
-                "the legal provisions it references. Your question doesn't appear "
-                "to relate to this document. Please ask something about your "
-                "document's content, clauses, or legal implications."
+                "Indian law. Your question doesn't appear to relate to either. "
+                "Please ask something about your document's content, clauses, "
+                "legal provisions, or Indian law."
                 f"{DISCLAIMER}"
             )
             save_message(document_id, user_id, "user", user_message)

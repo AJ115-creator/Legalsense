@@ -26,8 +26,9 @@ def _get_index():
     return _index
 
 BATCH_SIZE = 96  # Pinecone integrated embedding limit per batch
-SCORE_THRESHOLD = 0.0  # Reranker scores are near-zero floats (e.g. 0.004); no hard cutoff
-LOW_CONFIDENCE_THRESHOLD = 0.002  # Below this avg reranker score → add caution warning
+SCORE_THRESHOLD = 0.005  # Minimum reranker score to keep a result (filters noise)
+LOW_CONFIDENCE_THRESHOLD = 0.01  # Below this avg reranker score → off-topic gate triggers
+HARD_REFUSAL_THRESHOLD = 0.008  # If max score across all results < this → hard refuse (definitely off-topic)
 
 
 def upsert_records(records: list[dict]) -> int:
@@ -140,3 +141,9 @@ def avg_score(results: list) -> float:
     if not results:
         return 0.0
     return sum(r.get("_score", 0.0) for r in results if isinstance(r, dict)) / len(results)
+
+
+def max_score(results: list) -> float:
+    if not results:
+        return 0.0
+    return max((r.get("_score", 0.0) for r in results if isinstance(r, dict)), default=0.0)
