@@ -346,20 +346,16 @@ async def stream_chat_response(
         save_message(document_id, user_id, "user", user_message)
 
         # Stream response with LangFuse tracing
+        # Pass trace_id directly to handler so feedback scores link correctly
+        langfuse_handler = LangfuseCallbackHandler(
+            trace_id=trace_id,
+            user_id=user_id,
+            session_id=f"{user_id}:{document_id}",
+        )
         full_response = ""
         async for chunk in llm.astream(
             messages,
-            config={
-                "run_id": trace_id,
-                # Langfuse v3: CallbackHandler() takes no credential args.
-                # It auto-discovers the global Langfuse() client warmed at app
-                # startup in main.py (via feedback.get_langfuse()).
-                "callbacks": [LangfuseCallbackHandler()],
-                "metadata": {
-                    "langfuse_user_id": user_id,
-                    "langfuse_session_id": f"{user_id}:{document_id}",
-                },
-            },
+            config={"callbacks": [langfuse_handler]},
         ):
             token = chunk.content
             if token:
