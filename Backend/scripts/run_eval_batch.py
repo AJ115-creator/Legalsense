@@ -45,14 +45,18 @@ async def collect_eval_inputs(trace_ids: list[str]) -> list[dict]:
     for tid in trace_ids:
         data = await fetch_eval_data(tid)
         if not data:
-            logger.debug(f"No eval data in Redis for trace {tid} (cached/fallback/expired)")
+            logger.debug(
+                f"No eval data in Redis for trace {tid} (cached/fallback/expired)"
+            )
             continue
-        out.append({
-            "trace_id": tid,
-            "query": data["query"],
-            "response": data["response"],
-            "contexts": data["contexts"],
-        })
+        out.append(
+            {
+                "trace_id": tid,
+                "query": data["query"],
+                "response": data["response"],
+                "contexts": data["contexts"],
+            }
+        )
     return out
 
 
@@ -78,7 +82,9 @@ def push_scores(langfuse: Langfuse, results: list[dict]) -> int:
                 )
                 written += 1
             except Exception as e:
-                logger.error(f"Failed to push score trace={tid} metric={metric_name}: {e}")
+                logger.error(
+                    f"Failed to push score trace={tid} metric={metric_name}: {e}"
+                )
     return written
 
 
@@ -146,6 +152,8 @@ async def main(limit: int) -> int:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--limit", type=int, default=20, help="Number of traces to fetch")
+    parser.add_argument(
+        "--limit", type=int, default=20, help="Number of traces to fetch"
+    )
     args = parser.parse_args()
     sys.exit(asyncio.run(main(args.limit)))

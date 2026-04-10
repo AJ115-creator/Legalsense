@@ -19,7 +19,9 @@ async def _authenticate_ws(websocket: WebSocket) -> str | None:
         raw = await websocket.receive_text()
         msg = json.loads(raw)
         if msg.get("type") != "auth" or not msg.get("token"):
-            await websocket.send_json({"type": "auth_error", "detail": "Missing auth frame"})
+            await websocket.send_json(
+                {"type": "auth_error", "detail": "Missing auth frame"}
+            )
             await websocket.close(code=4001)
             return None
         user_id = await _verify_token(msg["token"])
@@ -52,10 +54,12 @@ async def chat_websocket(websocket: WebSocket, document_id: str):
 
             # WebSocket rate limiting
             if not await check_ws_rate_limit(user_id, document_id):
-                await websocket.send_json({
-                    "type": "error",
-                    "detail": "Rate limit exceeded. Please wait before sending more messages."
-                })
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "detail": "Rate limit exceeded. Please wait before sending more messages.",
+                    }
+                )
                 continue
 
             await websocket.send_json({"type": "stream_start"})
@@ -65,7 +69,10 @@ async def chat_websocket(websocket: WebSocket, document_id: str):
             )
 
             async for token in token_stream:
-                await websocket.send_json({"type": "token", "content": token})
+                if isinstance(token, dict) and token.get("__trace_id__"):
+                    trace_id = token["trace_id"]
+                else:
+                    await websocket.send_json({"type": "token", "content": token})
 
             await websocket.send_json({"type": "stream_end", "trace_id": trace_id})
 

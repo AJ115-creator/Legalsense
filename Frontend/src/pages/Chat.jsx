@@ -1,10 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
-import { createChatSocket, apiFetch } from '../services/api'
+import { LangfuseClient } from '@langfuse/client'
+import { createChatSocket } from '../services/api'
 import Card from '../components/ui/Card'
 import AuroraGradient from '../components/ui/AuroraGradient'
 import { ChevronLeftIcon, Spinner } from '../components/ui/icons'
+
+const langfuse = new LangfuseClient({
+  publicKey: import.meta.env.VITE_LANGFUSE_PUBLIC_KEY,
+  baseUrl: import.meta.env.VITE_LANGFUSE_BASE_URL,
+})
 
 const ThumbUpIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -18,7 +24,7 @@ const ThumbDownIcon = () => (
   </svg>
 )
 
-const ChatBubble = ({ message, getToken }) => {
+const ChatBubble = ({ message }) => {
   const isUser = message.role === 'user'
   const parts = message.content.split('\n\n---\n')
   const mainContent = parts[0]
@@ -29,11 +35,13 @@ const ChatBubble = ({ message, getToken }) => {
     if (feedback !== null) return
     setFeedback(score)
     try {
-      await apiFetch('/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trace_id: message.traceId, score }),
-      }, getToken)
+      langfuse.score.create({
+        traceId: message.traceId,
+        name: 'user-feedback',
+        value: Number(score),
+        dataType: 'BOOLEAN',
+      })
+      await langfuse.flush()
     } catch (err) {
       console.error('Feedback failed:', err)
     }
@@ -257,7 +265,7 @@ const Chat = () => {
                 const isLastUser = msg.role === 'user' && !messages.slice(i + 1).some(m => m.role === 'user')
                 return (
                   <div key={i} ref={isLastUser ? lastUserMsgRef : null}>
-                    <ChatBubble message={msg} getToken={getToken} />
+                    <ChatBubble message={msg} />
                   </div>
                 )
               })}

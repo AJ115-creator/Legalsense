@@ -9,7 +9,8 @@ from slowapi import _rate_limit_exceeded_handler
 
 from app.core.config import settings
 from app.core.rate_limiter import limiter
-from app.api.v1.endpoints import documents, chat, feedback, translate
+from app.api.v1.endpoints import documents, chat, translate
+from app.api.v1.endpoints import feedback as feedback_module
 
 # Sentry init (before app creation)
 if settings.SENTRY_DSN:
@@ -37,15 +38,15 @@ async def lifespan(app: FastAPI):
     # auto-discovers this global client — without this warm-up, the first chat
     # request before any feedback submission would crash.
     if settings.LANGFUSE_SECRET_KEY and settings.LANGFUSE_PUBLIC_KEY:
-        feedback.get_langfuse()
+        feedback_module.get_langfuse()
 
     yield
 
     # ---- shutdown ----
     # Only flush if the lazy singleton was actually built during this process's lifetime
-    if feedback._langfuse is not None:
+    if feedback_module._langfuse is not None:
         try:
-            feedback._langfuse.flush()
+            feedback_module._langfuse.flush()
         except Exception:
             pass
 
@@ -69,18 +70,9 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
-app.include_router(
-    documents.router, prefix="/api/v1/documents", tags=["documents"]
-)
-app.include_router(
-    chat.router, prefix="/api/v1/chat", tags=["chat"]
-)
-app.include_router(
-    feedback.router, prefix="/api/v1/feedback", tags=["feedback"]
-)
-app.include_router(
-    translate.router, prefix="/api/v1/translate", tags=["translate"]
-)
+app.include_router(documents.router, prefix="/api/v1/documents", tags=["documents"])
+app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
+app.include_router(translate.router, prefix="/api/v1/translate", tags=["translate"])
 
 
 @app.get("/health")

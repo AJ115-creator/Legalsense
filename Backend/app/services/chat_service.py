@@ -13,7 +13,6 @@ Anti-hallucination layers:
 """
 
 import re
-import uuid
 import logging
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -42,39 +41,39 @@ DISCLAIMER = (
 # Regex that matches terms signaling the query is about law, legal docs, or the uploaded document.
 # If a query matches ANY of these, it's allowed through to RAG without the off-topic gate.
 _LEGAL_SIGNAL = re.compile(
-    r'\b('
+    r"\b("
     # Legal domain
-    r'law|legal|act|section|article|clause|provision|statute|ordinance|regulation|rule|order|'
-    r'court|judge|magistrate|tribunal|bench|judiciary|justice|'
-    r'rights?|duties|obligation|liability|penalty|punishment|sentence|'
-    r'case|suit|petition|appeal|bail|hearing|trial|verdict|judgment|decree|'
-    r'offense|offence|crime|criminal|civil|penal|'
-    r'evidence|witness|testimony|affidavit|'
-    r'plaintiff|defendant|complainant|accused|petitioner|respondent|'
-    r'amendment|notification|gazette|'
+    r"law|legal|act|section|article|clause|provision|statute|ordinance|regulation|rule|order|"
+    r"court|judge|magistrate|tribunal|bench|judiciary|justice|"
+    r"rights?|duties|obligation|liability|penalty|punishment|sentence|"
+    r"case|suit|petition|appeal|bail|hearing|trial|verdict|judgment|decree|"
+    r"offense|offence|crime|criminal|civil|penal|"
+    r"evidence|witness|testimony|affidavit|"
+    r"plaintiff|defendant|complainant|accused|petitioner|respondent|"
+    r"amendment|notification|gazette|"
     # Indian law specific
-    r'ipc|bns|bnss|bsa|crpc|cpc|constitution|'
-    r'hindu|muslim|christian|sikh|parsi|'
-    r'indian|india|bharatiya|nyaya|sanhita|suraksha|nagarik|sakshya|'
-    r'supreme\s*court|high\s*court|district\s*court|'
-    r'fir|chargesheet|'
+    r"ipc|bns|bnss|bsa|crpc|cpc|constitution|"
+    r"hindu|muslim|christian|sikh|parsi|"
+    r"indian|india|bharatiya|nyaya|sanhita|suraksha|nagarik|sakshya|"
+    r"supreme\s*court|high\s*court|district\s*court|"
+    r"fir|chargesheet|"
     # Legal subjects
-    r'property|succession|inheritance|heir|partition|'
-    r'marriage|divorce|custody|adoption|maintenance|alimony|'
-    r'contract|agreement|deed|lease|tenant|landlord|'
-    r'arbitration|mediation|conciliation|'
-    r'compensation|damages|relief|remedy|injunction|'
-    r'consumer|grievance|'
-    r'company|corporate|director|shareholder|'
-    r'patent|copyright|trademark|'
-    r'tax|gst|'
-    r'labor|labour|employment|worker|wage|'
+    r"property|succession|inheritance|heir|partition|"
+    r"marriage|divorce|custody|adoption|maintenance|alimony|"
+    r"contract|agreement|deed|lease|tenant|landlord|"
+    r"arbitration|mediation|conciliation|"
+    r"compensation|damages|relief|remedy|injunction|"
+    r"consumer|grievance|"
+    r"company|corporate|director|shareholder|"
+    r"patent|copyright|trademark|"
+    r"tax|gst|"
+    r"labor|labour|employment|worker|wage|"
     # Document reference
-    r'document|uploaded|summary|summarize|explain|paragraph|chapter|schedule|'
+    r"document|uploaded|summary|summarize|explain|paragraph|chapter|schedule|"
     # Advisory
-    r'lawyer|advocate|attorney|consult|'
-    r'next\s*steps?|what\s*should|what\s*can\s*i\s*do|advise|advice'
-    r')\b',
+    r"lawyer|advocate|attorney|consult|"
+    r"next\s*steps?|what\s*should|what\s*can\s*i\s*do|advise|advice"
+    r")\b",
     re.IGNORECASE,
 )
 
@@ -87,14 +86,14 @@ OFFTOPIC_REFUSAL = (
 
 # Greetings/pleasantries — respond friendly without RAG
 _GREETING_PATTERN = re.compile(
-    r'^\s*('
-    r'h(i|ey|ello|owdy)|yo+|namaste|namaskar|'
-    r'good\s*(morning|afternoon|evening|day)|'
-    r'thanks?(\s*you)?|thank\s*u|dhanyavaad|shukriya|'
-    r'bye+|goodbye|see\s*ya|tata|alvida|'
-    r'ok(ay)?|sure|got\s*it|alright|'
-    r'how\s*are\s*you|what\'?s?\s*up|sup'
-    r')\s*[!?.]*\s*$',
+    r"^\s*("
+    r"h(i|ey|ello|owdy)|yo+|namaste|namaskar|"
+    r"good\s*(morning|afternoon|evening|day)|"
+    r"thanks?(\s*you)?|thank\s*u|dhanyavaad|shukriya|"
+    r"bye+|goodbye|see\s*ya|tata|alvida|"
+    r"ok(ay)?|sure|got\s*it|alright|"
+    r"how\s*are\s*you|what\'?s?\s*up|sup"
+    r")\s*[!?.]*\s*$",
     re.IGNORECASE,
 )
 
@@ -211,7 +210,10 @@ def _build_system_context(
     avg_user = pinecone_service.avg_score(user_chunks)
     avg_legal = pinecone_service.avg_score(legal_chunks)
     confidence_note = ""
-    if avg_user < pinecone_service.LOW_CONFIDENCE_THRESHOLD and avg_legal < pinecone_service.LOW_CONFIDENCE_THRESHOLD:
+    if (
+        avg_user < pinecone_service.LOW_CONFIDENCE_THRESHOLD
+        and avg_legal < pinecone_service.LOW_CONFIDENCE_THRESHOLD
+    ):
         confidence_note = (
             "\n**CAUTION: The retrieved context has LOW relevance to the user's query. "
             "If the question is not clearly about this document or Indian law, "
@@ -223,7 +225,6 @@ def _build_system_context(
         "understand the specific document they uploaded and the laws/legal provisions referenced in it.\n"
         "IMPORTANT: Always respond in ENGLISH regardless of the document's language. "
         "If the document is in Hindi or any other Indian language, answer in clear English.\n\n"
-
         "═══════════════════════════════════════\n"
         "ABSOLUTE RULES — NEVER VIOLATE THESE:\n"
         "═══════════════════════════════════════\n"
@@ -235,8 +236,8 @@ def _build_system_context(
         "3. If the user's question is NOT answerable from the document context provided below, "
         "you MUST refuse. Use this exact template:\n"
         '   "I can only help with questions about your uploaded document and the legal provisions '
-        'it references. Your question doesn\'t appear to relate to this document. '
-        'Please ask something about your document\'s content, clauses, or legal implications."\n'
+        "it references. Your question doesn't appear to relate to this document. "
+        "Please ask something about your document's content, clauses, or legal implications.\"\n"
         "4. Do NOT try to connect unrelated topics to the document. If someone asks about Facebook, "
         "cooking, sports, or anything outside the document scope — refuse, even if you could loosely "
         "relate it to a legal concept.\n"
@@ -246,12 +247,10 @@ def _build_system_context(
         "8. You are NOT a licensed lawyer. Always end substantive legal answers with a recommendation "
         "to consult a qualified lawyer.\n"
         "9. Do NOT speculate about facts specific to the user's case beyond what the document states.\n\n"
-
         "RELEVANCE TEST — Apply this BEFORE answering:\n"
         "  → Is the question about the document's content, parties, terms, or legal provisions? → ANSWER\n"
         "  → Is the question about a general topic, even if vaguely law-related? → REFUSE\n"
         "  → Is the question about something not mentioned in the CONTEXT below? → REFUSE\n\n"
-
         f"{confidence_note}"
         f"Document: {doc.get('title', 'Untitled')}\n"
         f"Type: {doc.get('type', 'Unknown')}\n"
@@ -294,13 +293,20 @@ def save_message(document_id: str, user_id: str, role: str, content: str):
 async def stream_chat_response(
     document_id: str, user_id: str, user_message: str
 ) -> tuple[str, AsyncGenerator[str, None]]:
-    """Returns (trace_id, token_generator) for RAG-augmented chat."""
-    trace_id = uuid.uuid4().hex  # 32 hex chars, no dashes — matches Langfuse format
+    """Returns (trace_id, token_generator) for RAG-augmented chat.
+
+    The trace_id returned is the actual Langfuse trace ID (handler.last_trace_id),
+    which is used to correlate feedback scores and Redis eval data.
+    """
+
+    langfuse_handler: LangfuseCallbackHandler | None = None
+    full_response = ""
+    trace_id = ""
 
     async def _generate() -> AsyncGenerator[str, None]:
+        nonlocal full_response, trace_id, langfuse_handler
         db = get_user_client(user_id)
 
-        # Fetch document metadata (RLS ensures only owner can access)
         doc_resp = (
             db.table("documents")
             .select("title, type, summary")
@@ -313,7 +319,6 @@ async def stream_chat_response(
             yield "Error: Document not found."
             return
 
-        # Greeting check — respond without RAG/LLM
         greeting = _get_greeting_response(user_message)
         if greeting:
             save_message(document_id, user_id, "user", user_message)
@@ -321,7 +326,6 @@ async def stream_chat_response(
             yield greeting
             return
 
-        # Semantic cache check — skip Pinecone + LLM on hit
         cached = await check_cache(document_id, user_message)
         if cached:
             save_message(document_id, user_id, "user", user_message)
@@ -329,7 +333,6 @@ async def stream_chat_response(
             yield cached
             return
 
-        # RAG retrieval — dual search (user-doc + legal-kb)
         user_chunks, legal_chunks = _retrieve_context(document_id, user_message)
 
         logger.info(
@@ -338,7 +341,6 @@ async def stream_chat_response(
             f"max: {pinecone_service.max_score(user_chunks):.4f}/{pinecone_service.max_score(legal_chunks):.4f})"
         )
 
-        # No-context fallback
         if not user_chunks and not legal_chunks:
             fallback = (
                 "I can only help with questions about your uploaded document and "
@@ -352,9 +354,6 @@ async def stream_chat_response(
             yield fallback
             return
 
-        # Pre-generation relevance gate — keyword + score based
-        # If query has legal/document signals → always allow through to LLM
-        # If no signals AND low scores → hard refuse without LLM
         has_signal = _has_legal_signal(user_message)
         avg_user = pinecone_service.avg_score(user_chunks)
         avg_legal = pinecone_service.avg_score(legal_chunks)
@@ -367,12 +366,14 @@ async def stream_chat_response(
         )
 
         if not has_signal:
-            # No legal keywords — check scores as backup
             both_avg_low = (
                 avg_user < pinecone_service.LOW_CONFIDENCE_THRESHOLD
                 and avg_legal < pinecone_service.LOW_CONFIDENCE_THRESHOLD
             )
-            if both_avg_low or max(max_user, max_legal) < pinecone_service.LOW_CONFIDENCE_THRESHOLD:
+            if (
+                both_avg_low
+                or max(max_user, max_legal) < pinecone_service.LOW_CONFIDENCE_THRESHOLD
+            ):
                 logger.info(f"Off-topic gate triggered for: {user_message[:80]}")
                 refusal = OFFTOPIC_REFUSAL + DISCLAIMER
                 save_message(document_id, user_id, "user", user_message)
@@ -380,7 +381,6 @@ async def stream_chat_response(
                 yield refusal
                 return
 
-        # Build message list
         history = await get_chat_history(document_id, user_id)
         system_context = _build_system_context(doc, user_chunks, legal_chunks)
         messages = [SystemMessage(content=system_context)]
@@ -389,15 +389,9 @@ async def stream_chat_response(
             messages.append(cls(content=msg["content"]))
         messages.append(HumanMessage(content=user_message))
 
-        # Save user message
         save_message(document_id, user_id, "user", user_message)
 
-        # Stream response with LangFuse tracing
-        # trace_context links our trace_id so feedback scores match
-        langfuse_handler = LangfuseCallbackHandler(
-            trace_context={"trace_id": trace_id},
-        )
-        full_response = ""
+        langfuse_handler = LangfuseCallbackHandler()
         async for chunk in llm.astream(
             messages,
             config={
@@ -413,19 +407,19 @@ async def stream_chat_response(
                 full_response += token
                 yield token
 
-        # Append disclaimer if not already present
         if "not legal advice" not in full_response.lower():
             yield DISCLAIMER
             full_response += DISCLAIMER
 
-        # Save assistant response
         save_message(document_id, user_id, "assistant", full_response)
 
-        # Persist eval data for offline RAG evaluation (Ragas batch via cron)
+        trace_id = langfuse_handler.last_trace_id
+
+        yield {"__trace_id__": trace_id}
+
         eval_contexts = [_hit_field(c, "text") for c in user_chunks + legal_chunks]
         await store_eval_data(trace_id, user_message, full_response, eval_contexts)
 
-        # Cache the response for future semantic matches
         await store_cache(document_id, user_message, full_response)
 
-    return trace_id, _generate()
+    return "", _generate()

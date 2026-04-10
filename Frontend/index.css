@@ -188,30 +188,4 @@
 .animate-in {
     animation: modal-in 0.2s ease-out forwards;
 }
-
-/* ── Sonner glassmorphism toast ─────────────────────── */
-.sonner-glass {
-    --_glass-bg: color-mix(in srgb, var(--card) 65%, transparent);
-    background: var(--_glass-bg) !important;
-    backdrop-filter: blur(16px) saturate(1.4) !important;
-    -webkit-backdrop-filter: blur(16px) saturate(1.4) !important;
-    border: 1px solid color-mix(in srgb, var(--border) 40%, transparent) !important;
-    border-radius: 0.75rem !important;
-    box-shadow:
-        0 4px 24px -4px color-mix(in srgb, var(--foreground) 8%, transparent),
-        inset 0 1px 0 0 color-mix(in srgb, var(--primary-foreground) 10%, transparent) !important;
-    color: var(--foreground) !important;
-    font-family: var(--font-sans) !important;
-}
-
-/* Success variant — subtle green tint */
-.sonner-glass[data-type="success"] {
-    --_glass-bg: color-mix(in srgb, var(--card) 60%, #22c55e10);
-    border-color: color-mix(in srgb, #22c55e 25%, transparent) !important;
-}
-
-/* Error variant — subtle red tint */
-.sonner-glass[data-type="error"] {
-    --_glass-bg: color-mix(in srgb, var(--card) 60%, #ef444410);
-    border-color: color-mix(in srgb, var(--destructive) 25%, transparent) !important;
-}
+
