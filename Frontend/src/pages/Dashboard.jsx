@@ -125,7 +125,7 @@ const Dashboard = () => {
     try {
       await apiFetch(`/documents/${docId}`, { method: 'DELETE' }, getToken)
       toast.success(`"${docTitle}" deleted successfully`)
-    } catch (e) {
+    } catch {
       toast.error(`Failed to delete "${docTitle}"`)
       // Rollback on failure — re-fetch the full list
       try {
