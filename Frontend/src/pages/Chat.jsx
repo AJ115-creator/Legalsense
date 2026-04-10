@@ -9,6 +9,7 @@ import { ChevronLeftIcon, Spinner } from '../components/ui/icons'
 
 const langfuse = new LangfuseClient({
   publicKey: import.meta.env.VITE_LANGFUSE_PUBLIC_KEY,
+  secretKey: import.meta.env.VITE_LANGFUSE_SECRET_KEY,
   baseUrl: import.meta.env.VITE_LANGFUSE_BASE_URL,
 })
 
