@@ -10,11 +10,13 @@ Embeddings:  fastembed BAAI/bge-small-en-v1.5 (already on disk for sem cache).
 """
 
 import logging
+import typing as t
+import asyncio
 
 import litellm
 from langchain_community.embeddings import FastEmbedEmbeddings
 from ragas import EvaluationDataset, evaluate
-from ragas.embeddings import LangchainEmbeddingsWrapper
+from ragas.embeddings.base import BaseRagasEmbedding
 from ragas.llms import llm_factory
 from ragas.metrics.collections import (
     AnswerRelevancy,
@@ -25,6 +27,29 @@ from ragas.metrics.collections import (
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+class ModernFastEmbedWrapper(BaseRagasEmbedding):
+    """Modern BaseRagasEmbedding wrapper for FastEmbed to satisfy ragas requirements."""
+    
+    def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5"):
+        super().__init__()
+        self.fastembed = FastEmbedEmbeddings(model_name=model_name)
+
+    def embed_text(self, text: str, **kwargs: t.Any) -> t.List[float]:
+        return self.fastembed.embed_query(text)
+
+    async def aembed_text(self, text: str, **kwargs: t.Any) -> t.List[float]:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.embed_text, text)
+
+    def embed_texts(self, texts: t.List[str], **kwargs: t.Any) -> t.List[t.List[float]]:
+        return self.fastembed.embed_documents(texts)
+
+    async def aembed_texts(self, texts: t.List[str], **kwargs: t.Any) -> t.List[t.List[float]]:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.embed_texts, texts)
+
 
 _judge_llm = None
 _judge_embeddings = None
@@ -40,9 +65,7 @@ def _get_judge():
             client=litellm.completion,
         )
     if _judge_embeddings is None:
-        _judge_embeddings = LangchainEmbeddingsWrapper(
-            FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
-        )
+        _judge_embeddings = ModernFastEmbedWrapper(model_name="BAAI/bge-small-en-v1.5")
     return _judge_llm, _judge_embeddings
 
 
