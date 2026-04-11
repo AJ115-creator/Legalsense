@@ -81,40 +81,38 @@ const DocumentCard = ({ doc, onDelete }) => {
   }
 
   return (
-    <Link to={`/results/${doc.id}`}>
-      <Card
-        ref={cardRef}
-        glass
-        clickable
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 stagger-item"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        <div className="flex items-start gap-4">
-          <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-            <DocumentIcon size={20} />
-          </div>
-          <div>
-            <h3 className="font-medium text-foreground">{doc.title}</h3>
-            <p className="text-sm text-muted-foreground mt-0.5">{doc.pages} pages &middot; {doc.date}</p>
-          </div>
+    <Card
+      to={`/results/${doc.id}`}
+      ref={cardRef}
+      glass
+      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 stagger-item"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <div className="flex items-start gap-4">
+        <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+          <DocumentIcon size={20} />
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge variant={doc.status === 'analyzed' ? 'success' : doc.status === 'error' ? 'destructive' : 'warning'}>
-            {doc.status === 'analyzed' ? 'Analyzed' : doc.status === 'error' ? 'Failed' : 'Pending'}
-          </Badge>
-          <button
-            onClick={handleDeleteClick}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors duration-150"
-            aria-label={`Delete ${doc.title}`}
-            title="Delete document"
-          >
-            <TrashIcon size={16} />
-          </button>
-          <ChevronRightIcon size={16} />
+        <div>
+          <h3 className="font-medium text-foreground">{doc.title}</h3>
+          <p className="text-sm text-muted-foreground mt-0.5">{doc.pages} pages &middot; {doc.date}</p>
         </div>
-      </Card>
-    </Link>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <Badge variant={doc.status === 'analyzed' ? 'success' : doc.status === 'error' ? 'destructive' : 'warning'}>
+          {doc.status === 'analyzed' ? 'Analyzed' : doc.status === 'error' ? 'Failed' : 'Pending'}
+        </Badge>
+        <button
+          onClick={handleDeleteClick}
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors duration-150 relative z-10"
+          aria-label={`Delete ${doc.title}`}
+          title="Delete document"
+        >
+          <TrashIcon size={16} />
+        </button>
+        <ChevronRightIcon size={16} />
+      </div>
+    </Card>
   )
 }
 
@@ -125,7 +123,7 @@ const EmptyState = () => (
     </div>
     <h3 className="font-serif text-xl font-semibold mb-2">No documents yet</h3>
     <p className="text-muted-foreground mb-6">Upload your first legal document to get started.</p>
-    <Link to="/upload"><Button>Upload Document</Button></Link>
+    <Button to="/upload">Upload Document</Button>
   </div>
 )
 
@@ -200,7 +198,7 @@ const Dashboard = () => {
             <h1 className="font-serif text-2xl md:text-3xl font-bold tracking-[-0.03em]">Your Documents</h1>
             <p className="text-muted-foreground mt-1">All your uploaded legal documents in one place.</p>
           </div>
-          <Link to="/upload"><Button>Upload New</Button></Link>
+          <Button to="/upload">Upload New</Button>
         </div>
 
         {loading ? (

@@ -1,4 +1,5 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, forwardRef } from 'react'
+import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 
 const variants = {
@@ -14,42 +15,87 @@ const sizes = {
   lg: 'px-7 py-3.5 text-lg',
 }
 
-export default function Button({
+const Button = forwardRef(function Button({
   variant = 'primary',
   size = 'md',
   className = '',
   disabled = false,
+  to,
+  href,
   children,
   ...props
-}) {
-  const ref = useRef()
+}, forwardedRef) {
+  const internalRef = useRef()
+
+  const setRefs = useCallback(
+    (node) => {
+      internalRef.current = node
+      if (typeof forwardedRef === 'function') forwardedRef(node)
+      else if (forwardedRef) forwardedRef.current = node
+    },
+    [forwardedRef],
+  )
 
   const handleEnter = useCallback(() => {
     if (disabled) return
-    gsap.to(ref.current, { scale: 1.02, y: -2, duration: 0.2, ease: 'back.out(1.5)' })
+    gsap.to(internalRef.current, { scale: 1.02, y: -2, duration: 0.2, ease: 'back.out(1.5)' })
   }, [disabled])
 
   const handleLeave = useCallback(() => {
-    gsap.to(ref.current, { scale: 1, y: 0, duration: 0.15, ease: 'power2.out' })
+    gsap.to(internalRef.current, { scale: 1, y: 0, duration: 0.15, ease: 'power2.out' })
   }, [])
+
+  const baseClasses = `
+    inline-flex items-center justify-center gap-2 rounded-lg font-sans font-medium
+    transition-shadow duration-150 ease-out inline-block
+    hover:shadow-md
+    active:shadow-sm
+    ${disabled ? 'opacity-50 pointer-events-none' : ''}
+    ${variants[variant]} ${sizes[size]} ${className}
+  `.replace(/\s+/g, ' ').trim()
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        ref={setRefs}
+        onMouseEnter={handleEnter}
+        onMouseLeave={handleLeave}
+        className={baseClasses}
+        {...props}
+      >
+        {children}
+      </Link>
+    )
+  }
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        ref={setRefs}
+        onMouseEnter={handleEnter}
+        onMouseLeave={handleLeave}
+        className={baseClasses}
+        {...props}
+      >
+        {children}
+      </a>
+    )
+  }
 
   return (
     <button
-      ref={ref}
+      ref={setRefs}
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
-      className={`
-        inline-flex items-center justify-center gap-2 rounded-lg font-sans font-medium
-        transition-shadow duration-150 ease-out
-        hover:shadow-md
-        active:shadow-sm
-        disabled:opacity-50 disabled:pointer-events-none
-        ${variants[variant]} ${sizes[size]} ${className}
-      `}
+      className={baseClasses}
       disabled={disabled}
       {...props}
     >
       {children}
     </button>
   )
-}
+})
+
+export default Button

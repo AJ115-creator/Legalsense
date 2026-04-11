@@ -98,6 +98,10 @@ const Results = () => {
         { opacity: 1, y: 0, duration: 0.45, delay: 0.2, ease: 'power2.out' }
       )
     })
+    mm.add('(prefers-reduced-motion: reduce)', () => {
+      if (ctaBtnRef.current) ctaBtnRef.current.style.opacity = '1'
+    })
+    return () => mm.revert()
   }, [data])
 
   const handleDeleteAndRetry = async () => {
@@ -135,7 +139,7 @@ const Results = () => {
         <h2 className="font-serif text-2xl font-bold mb-4">Analysis Failed</h2>
         <p className="text-muted-foreground mb-6">{error || "We couldn't load analysis results for this document."}</p>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link to="/dashboard"><Button variant="secondary">Back to Dashboard</Button></Link>
+          <Button to="/dashboard" variant="secondary">Back to Dashboard</Button>
           <Button onClick={handleDeleteAndRetry} disabled={deleting}>
             {deleting ? 'Deleting…' : 'Delete and try again'}
           </Button>
@@ -158,16 +162,14 @@ const Results = () => {
         <Tabs tabs={tabs} />
 
         <div ref={ctaBtnRef} className="mt-10 text-center opacity-0">
-          <Link to={`/chat/${id}`}>
-            <Button size="lg">
-              <span className="flex items-center gap-2">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-                Discuss with AI Assistant
-              </span>
-            </Button>
-          </Link>
+          <Button to={`/chat/${id}`} size="lg">
+            <span className="flex items-center gap-2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Discuss with AI Assistant
+            </span>
+          </Button>
           <p className="text-sm text-muted-foreground mt-2">Ask questions about this document and get instant answers.</p>
         </div>
       </div>

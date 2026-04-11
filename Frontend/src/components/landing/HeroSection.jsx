@@ -1,5 +1,4 @@
 import { useRef } from 'react'
-import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
@@ -11,9 +10,9 @@ gsap.registerPlugin(ScrollTrigger)
 
 const AuthCTA = ({ isSignedIn }) => {
   if (isSignedIn) {
-    return <Link to="/upload"><Button size="lg">Upload Document</Button></Link>
+    return <Button to="/upload" size="lg">Upload Document</Button>
   }
-  return <Link to="/sign-in"><Button size="lg">Sign In to Start</Button></Link>
+  return <Button to="/sign-in" size="lg">Sign In to Start</Button>
 }
 
 const WORDS_LINE1 = ['Your', 'Legal', 'Documents,']
@@ -38,6 +37,15 @@ const HeroSection = () => {
         y: 16,
         scale: 0.9,
         duration: 0.55,
+        onComplete: () => {
+          gsap.to('.hero-badge-dot', {
+            opacity: 0.3,
+            duration: 0.8,
+            yoyo: true,
+            repeat: -1,
+            ease: 'sine.inOut'
+          })
+        }
       })
       .from('.hero-word', {
         y: '108%',
@@ -89,7 +97,7 @@ const HeroSection = () => {
     })
 
     if (ctaRef.current) {
-      const ctaBtn = ctaRef.current.querySelector('a, button')
+      const ctaBtn = ctaRef.current.querySelector('button')
       if (ctaBtn) {
         gsap.to(ctaBtn, {
           boxShadow: '0 0 20px var(--primary), 0 0 40px var(--primary)',
@@ -114,7 +122,7 @@ const HeroSection = () => {
           ref={badgeRef}
           className="mb-8 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-sm font-medium"
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+          <span className="hero-badge-dot w-1.5 h-1.5 rounded-full bg-primary" />
           AI-Powered Legal Analysis for India
         </div>
 
@@ -140,9 +148,7 @@ const HeroSection = () => {
 
         <div ref={ctaRef} className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
           <AuthCTA isSignedIn={isSignedIn} />
-          <Link to="/about">
-            <Button variant="outline" size="lg">Learn More</Button>
-          </Link>
+          <Button to="/about" variant="outline" size="lg">Learn More</Button>
         </div>
 
       </div>

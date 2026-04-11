@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { useScrollStagger } from '../../hooks/useScrollStagger'
 import Button from '../ui/Button'
@@ -24,9 +23,9 @@ const CTASection = () => {
             Your legal documents contain critical information about your rights and obligations.
             Don't leave it to chance.
           </p>
-          <Link to={ctaLink} className="stagger-item inline-block">
-            <Button size="lg">{ctaText}</Button>
-          </Link>
+          <Button to={ctaLink} size="lg" className="stagger-item">
+            {ctaText}
+          </Button>
         </Card>
       </div>
     </section>
