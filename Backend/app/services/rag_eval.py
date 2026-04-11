@@ -78,7 +78,7 @@ def evaluate_traces(traces: list[dict]) -> list[dict]:
 
     metrics = [
         Faithfulness(llm=judge_llm),
-        AnswerRelevancy(llm=judge_llm),
+        AnswerRelevancy(llm=judge_llm, embeddings=judge_embeddings),
         ContextPrecisionWithoutReference(llm=judge_llm),
     ]
 
