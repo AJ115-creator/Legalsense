@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
+import { useGSAP } from '@gsap/react'
+import gsap from 'gsap'
 import { apiFetch } from '../services/api'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
@@ -34,6 +36,8 @@ const Results = () => {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const skeletonRef = useRef(null)
+  const ctaBtnRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -71,6 +75,31 @@ const Results = () => {
     }
   }, [id, getToken])
 
+  useGSAP(() => {
+    if (!skeletonRef.current) return
+    const mm = gsap.matchMedia()
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      gsap.to(skeletonRef.current, {
+        opacity: 0.4,
+        duration: 0.8,
+        yoyo: true,
+        repeat: -1,
+        ease: 'power1.inOut',
+      })
+    })
+  }, { scope: skeletonRef })
+
+  useEffect(() => {
+    if (!data || !ctaBtnRef.current) return
+    const mm = gsap.matchMedia()
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      gsap.fromTo(ctaBtnRef.current,
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.45, delay: 0.2, ease: 'power2.out' }
+      )
+    })
+  }, [data])
+
   const handleDeleteAndRetry = async () => {
     setDeleting(true)
     try {
@@ -93,7 +122,7 @@ const Results = () => {
   if (pending) {
     return (
       <div className="py-20 text-center">
-        <Spinner className="mx-auto mb-4" />
+        <div ref={skeletonRef} className="w-16 h-16 rounded-full bg-muted mx-auto mb-4" />
         <h2 className="font-serif text-2xl font-bold mb-2">Analyzing Your Document</h2>
         <p className="text-muted-foreground">Our AI is reading and analyzing your legal document. This usually takes 15-30 seconds.</p>
       </div>
@@ -128,7 +157,7 @@ const Results = () => {
         <DocumentHeader data={data} />
         <Tabs tabs={tabs} />
 
-        <div className="mt-10 text-center">
+        <div ref={ctaBtnRef} className="mt-10 text-center opacity-0">
           <Link to={`/chat/${id}`}>
             <Button size="lg">
               <span className="flex items-center gap-2">

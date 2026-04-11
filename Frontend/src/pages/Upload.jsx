@@ -18,12 +18,21 @@ const Upload = () => {
   const { setFile: setContextFile } = useUpload()
   const { getToken } = useAuth()
   const navigate = useNavigate()
+  const sectionRef = useRef(null)
   const btnRef = useRef()
   const readyRef = useRef()
+  const progressBarRef = useRef(null)
 
   useGSAP(() => {
-    // scope setup
-  }, { scope: btnRef })
+    if (!sectionRef.current) return
+    const mm = gsap.matchMedia()
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      gsap.fromTo(sectionRef.current,
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
+      )
+    })
+  }, { scope: sectionRef })
 
   useEffect(() => {
     if (!file || !btnRef.current) return
@@ -43,6 +52,17 @@ const Upload = () => {
     })
   }, [file])
 
+  useEffect(() => {
+    if (!analyzing || !progressBarRef.current) return
+    const mm = gsap.matchMedia()
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      gsap.fromTo(progressBarRef.current,
+        { scaleX: 0 },
+        { scaleX: 0.7, duration: 2, ease: 'power1.inOut' }
+      )
+    })
+  }, [analyzing])
+
   const handleAnalyze = async () => {
     if (!file) return
     setAnalyzing(true)
@@ -59,7 +79,7 @@ const Upload = () => {
   }
 
   return (
-    <div className="py-16 px-4 relative overflow-hidden">
+    <div ref={sectionRef} className="py-16 px-4 relative overflow-hidden">
       <AuroraGradient variant="subtle" />
       <div className="max-w-2xl mx-auto">
         <SectionHeading
@@ -71,6 +91,19 @@ const Upload = () => {
 
         {error && (
           <p className="text-center text-sm text-destructive mb-4">{error}</p>
+        )}
+
+        {analyzing && (
+          <div className="mb-6">
+            <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                ref={progressBarRef}
+                className="h-full bg-primary origin-left rounded-full"
+                style={{ transform: 'scaleX(0)' }}
+              />
+            </div>
+            <p className="text-center text-xs text-muted-foreground mt-2">Uploading and analyzing your document...</p>
+          </div>
         )}
 
         <div className="text-center" ref={btnRef}>

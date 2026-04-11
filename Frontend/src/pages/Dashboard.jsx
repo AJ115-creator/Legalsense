@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
+import { useGSAP } from '@gsap/react'
+import gsap from 'gsap'
 import { toast } from 'sonner'
 import { apiFetch } from '../services/api'
 import Card from '../components/ui/Card'
@@ -9,49 +11,85 @@ import Button from '../components/ui/Button'
 import AuroraGradient from '../components/ui/AuroraGradient'
 import { DocumentIcon, ChevronRightIcon, TrashIcon, Spinner } from '../components/ui/icons'
 
-/* ── Delete confirmation modal ───────────────────────── */
-const DeleteModal = ({ docTitle, onConfirm, onCancel, deleting }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-    {/* Backdrop */}
-    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
-    {/* Dialog */}
-    <div className="relative bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-      <h3 className="font-serif text-lg font-semibold mb-2">Delete Document</h3>
-      <p className="text-sm text-muted-foreground mb-1">
-        Are you sure you want to delete <strong className="text-foreground">{docTitle}</strong>?
-      </p>
-      <p className="text-xs text-muted-foreground mb-6">
-        This will permanently remove the document, its analysis, chat history, and all associated data. This action cannot be undone.
-      </p>
-      <div className="flex items-center justify-end gap-3">
-        <Button variant="ghost" size="sm" onClick={onCancel} disabled={deleting}>
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          size="sm"
-          className="!bg-destructive !text-destructive-foreground hover:!brightness-110"
-          onClick={onConfirm}
-          disabled={deleting}
-        >
-          {deleting ? 'Deleting…' : 'Delete'}
-        </Button>
+const DeleteModal = ({ docTitle, onConfirm, onCancel, deleting }) => {
+  const backdropRef = useRef(null)
+  const dialogRef = useRef(null)
+
+  useGSAP(() => {
+    if (!backdropRef.current || !dialogRef.current) return
+    gsap.fromTo(backdropRef.current, { opacity: 0 }, { opacity: 1, duration: 0.2 })
+    gsap.fromTo(dialogRef.current, { scale: 0.92, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.25, ease: 'back.out(1.2)' })
+  }, { scope: { backdrop: backdropRef, dialog: dialogRef } })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div ref={backdropRef} className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <div ref={dialogRef} className="relative bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl">
+        <h3 className="font-serif text-lg font-semibold mb-2">Delete Document</h3>
+        <p className="text-sm text-muted-foreground mb-1">
+          Are you sure you want to delete <strong className="text-foreground">{docTitle}</strong>?
+        </p>
+        <p className="text-xs text-muted-foreground mb-6">
+          This will permanently remove the document, its analysis, chat history, and all associated data. This action cannot be undone.
+        </p>
+        <div className="flex items-center justify-end gap-3">
+          <Button variant="ghost" size="sm" onClick={onCancel} disabled={deleting}>Cancel</Button>
+          <Button
+            variant="primary"
+            size="sm"
+            className="!bg-destructive !text-destructive-foreground hover:!brightness-110"
+            onClick={onConfirm}
+            disabled={deleting}
+          >
+            {deleting ? 'Deleting…' : 'Delete'}
+          </Button>
+        </div>
       </div>
     </div>
-  </div>
-)
+  )
+}
 
-/* ── Document card with delete ───────────────────────── */
 const DocumentCard = ({ doc, onDelete }) => {
+  const cardRef = useRef(null)
+
+  const handleMouseEnter = useCallback(() => {
+    if (!cardRef.current) return
+    gsap.to(cardRef.current, {
+      y: -4,
+      scale: 1.02,
+      boxShadow: '0 8px 24px var(--border)',
+      duration: 0.2,
+      ease: 'power2.out',
+    })
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    if (!cardRef.current) return
+    gsap.to(cardRef.current, {
+      y: 0,
+      scale: 1,
+      boxShadow: 'var(--shadow)',
+      duration: 0.2,
+      ease: 'power2.out',
+    })
+  }, [])
+
   const handleDeleteClick = (e) => {
-    e.preventDefault()   // don't navigate via the parent <Link>
+    e.preventDefault()
     e.stopPropagation()
     onDelete(doc)
   }
 
   return (
     <Link to={`/results/${doc.id}`}>
-      <Card glass clickable className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <Card
+        ref={cardRef}
+        glass
+        clickable
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 stagger-item"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <div className="flex items-start gap-4">
           <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
             <DocumentIcon size={20} />
@@ -62,14 +100,8 @@ const DocumentCard = ({ doc, onDelete }) => {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Badge variant={
-            doc.status === 'analyzed' ? 'success' :
-            doc.status === 'error'    ? 'destructive' :
-                                        'warning'
-          }>
-            {doc.status === 'analyzed' ? 'Analyzed' :
-             doc.status === 'error'    ? 'Failed' :
-                                         'Pending'}
+          <Badge variant={doc.status === 'analyzed' ? 'success' : doc.status === 'error' ? 'destructive' : 'warning'}>
+            {doc.status === 'analyzed' ? 'Analyzed' : doc.status === 'error' ? 'Failed' : 'Pending'}
           </Badge>
           <button
             onClick={handleDeleteClick}
@@ -102,8 +134,9 @@ const Dashboard = () => {
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [deleteTarget, setDeleteTarget] = useState(null)   // doc to confirm delete
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const gridRef = useRef(null)
 
   useEffect(() => {
     apiFetch('/documents/', {}, getToken)
@@ -112,13 +145,35 @@ const Dashboard = () => {
       .finally(() => setLoading(false))
   }, [getToken])
 
+  useGSAP(() => {
+    if (!gridRef.current) return
+    const children = gridRef.current.querySelectorAll('.stagger-item')
+    if (children.length === 0) return
+
+    const mm = gsap.matchMedia()
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      gsap.from(gridRef.current, {
+        y: 20,
+        opacity: 0,
+        duration: 0.4,
+        ease: 'power2.out',
+      })
+      gsap.from(children, {
+        y: 30,
+        opacity: 0,
+        duration: 0.5,
+        stagger: 0.15,
+        ease: 'power2.out',
+      })
+    })
+  }, { scope: gridRef })
+
   const handleDelete = useCallback(async () => {
     if (!deleteTarget) return
     setDeleting(true)
     const docId = deleteTarget.id
     const docTitle = deleteTarget.title
 
-    // Optimistic removal
     setDocuments(prev => prev.filter(d => d.id !== docId))
     setDeleteTarget(null)
 
@@ -127,7 +182,6 @@ const Dashboard = () => {
       toast.success(`"${docTitle}" deleted successfully`)
     } catch {
       toast.error(`Failed to delete "${docTitle}"`)
-      // Rollback on failure — re-fetch the full list
       try {
         const fresh = await apiFetch('/documents/', {}, getToken)
         setDocuments(fresh)
@@ -161,7 +215,7 @@ const Dashboard = () => {
         ) : documents.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid gap-4">
+          <div ref={gridRef} className="grid gap-4">
             {documents.map(doc => (
               <DocumentCard
                 key={doc.id}
@@ -173,7 +227,6 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Delete confirmation modal */}
       {deleteTarget && (
         <DeleteModal
           docTitle={deleteTarget.title}
