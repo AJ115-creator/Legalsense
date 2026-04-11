@@ -5,22 +5,17 @@ Reference-free metrics (no ground-truth labels needed):
   - AnswerRelevancy:    does the answer address the question?
   - ContextPrecision:    is the BGE reranker ordering chunks well?
 
-Judge model: Groq llama-3.3-70b-versatile (free tier).
-Embeddings:  fastembed BAAI/bge-small-en-v1.5 (already on disk for sem cache).
-
-Migrated to Ragas v0.4 imports:
-  - Metrics from ragas.metrics.collections (new API)
-  - LLM wrapper stays as LangchainLLMWrapper (deprecated but functional in v0.4)
-    since llm_factory() does not support ChatGroq client natively.
+Judge model: HuggingFace Mistral-Small-3.1-24B-Instruct via LiteLLM.
+Embeddings:  fastembed BAAI/bge-small-v1.5 (already on disk for sem cache).
 """
 
 import logging
 
+import litellm
 from langchain_community.embeddings import FastEmbedEmbeddings
-from langchain_groq import ChatGroq
 from ragas import EvaluationDataset, evaluate
 from ragas.embeddings import LangchainEmbeddingsWrapper
-from ragas.llms import LangchainLLMWrapper
+from ragas.llms import llm_factory
 from ragas.metrics.collections import (
     AnswerRelevancy,
     ContextPrecisionWithoutReference,
@@ -38,16 +33,15 @@ _judge_embeddings = None
 def _get_judge():
     global _judge_llm, _judge_embeddings
     if _judge_llm is None:
-        _judge_llm = LangchainLLMWrapper(
-            ChatGroq(
-                model=settings.GROQ_MODEL,
-                api_key=settings.GROQ_API_KEY,
-                temperature=0,
-            )
+        litellm.api_key = settings.HUGGINGFACE_API_KEY
+        _judge_llm = llm_factory(
+            f"huggingface/{settings.HF_JUDGE_MODEL}",
+            provider="litellm",
+            client=litellm.completion,
         )
     if _judge_embeddings is None:
         _judge_embeddings = LangchainEmbeddingsWrapper(
-            FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+            FastEmbedEmbeddings(model_name="BAAI/bge-small-v1.5")
         )
     return _judge_llm, _judge_embeddings
 

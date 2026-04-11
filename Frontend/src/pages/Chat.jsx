@@ -3,9 +3,10 @@ import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '@clerk/react'
 import { LangfuseClient } from '@langfuse/client'
 import { createChatSocket } from '../services/api'
+import { useChatAnimations, useTypingIndicator } from '../hooks/useChatAnimations'
 import Card from '../components/ui/Card'
 import AuroraGradient from '../components/ui/AuroraGradient'
-import { ChevronLeftIcon, Spinner } from '../components/ui/icons'
+import { ChevronLeftIcon } from '../components/ui/icons'
 
 const langfuse = new LangfuseClient({
   publicKey: import.meta.env.VITE_LANGFUSE_PUBLIC_KEY,
@@ -24,6 +25,26 @@ const ThumbDownIcon = () => (
     <path d="M19 11.75a1.25 1.25 0 1 1-2.5 0v-7.5a1.25 1.25 0 1 1 2.5 0v7.5ZM14 12.918V3.5a1.5 1.5 0 0 0-1.235-1.476 5.75 5.75 0 0 0-3.453.196l-.174.082a5.75 5.75 0 0 0-2.576 2.576l-2.348 4.696A1.25 1.25 0 0 0 5.332 11H8.5a.75.75 0 0 1 .75.75c0 1.034-.212 2.236-.58 3.184-.204.527-.455.994-.756 1.373a3.528 3.528 0 0 1-.386.42A1.25 1.25 0 0 0 8.5 18.5a2.75 2.75 0 0 0 2.75-2.75c0-.573.109-1.182.326-1.77A4.952 4.952 0 0 1 12.5 12.5h1.418Z" />
   </svg>
 )
+
+const TypingIndicator = ({ dotRefs }) => {
+  useTypingIndicator(dotRefs)
+  return (
+    <div className="flex justify-start">
+      <div className="rounded-2xl px-4 py-3 bg-muted">
+        <div className="flex items-center gap-1.5">
+          {[0, 1, 2].map(i => (
+            <span
+              key={i}
+              ref={el => dotRefs[i] = el}
+              className="w-1.5 h-1.5 rounded-full bg-muted-foreground"
+              style={{ opacity: 0.4 }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const ChatBubble = ({ message }) => {
   const isUser = message.role === 'user'
@@ -52,7 +73,7 @@ const ChatBubble = ({ message }) => {
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className="max-w-[80%]">
         <div
-          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap chat-bubble ${isUser ? 'user' : 'ai'} ${
             isUser
               ? 'bg-primary text-primary-foreground rounded-br-md'
               : 'bg-muted text-foreground rounded-bl-md'
@@ -107,22 +128,22 @@ const Chat = () => {
   const chatContainerRef = useRef(null)
   const lastUserMsgRef = useRef(null)
   const shouldAutoScrollRef = useRef(true)
+  const dotRefs = useRef([null, null, null])
 
-  // Check if user is near the bottom of the chat container
+  useChatAnimations(chatContainerRef, messages)
+
   const isNearBottom = () => {
     const el = chatContainerRef.current
     if (!el) return true
     return el.scrollHeight - el.scrollTop - el.clientHeight < 150
   }
 
-  // When user sends a message, scroll their message into view
   useEffect(() => {
     if (lastUserMsgRef.current) {
       lastUserMsgRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
     }
-  }, [messages.length]) // only on new message count changes
+  }, [messages.length])
 
-  // During streaming tokens, only auto-scroll if user is already near bottom
   useEffect(() => {
     if (streaming && shouldAutoScrollRef.current) {
       const el = chatContainerRef.current
@@ -147,14 +168,12 @@ const Chat = () => {
         wsRef.current = ws
 
         ws.onopen = () => {
-          // Send token as first frame (not in URL)
           ws.send(JSON.stringify({ type: 'auth', token }))
         }
 
         ws.onclose = () => {
           if (closed) return
           setConnected(false)
-          // Auto-reconnect with exponential backoff
           if (retries < MAX_RETRIES) {
             const delay = Math.min(1000 * Math.pow(2, retries), 16000)
             retryTimer = setTimeout(() => { retries++; connect() }, delay)
@@ -240,7 +259,6 @@ const Chat = () => {
     <div className="py-8 px-4 relative overflow-hidden h-[calc(100vh-4rem)] flex flex-col">
       <AuroraGradient blobs={[{ pos: 'top-1/4 left-1/3', size: 'w-64 h-64', color: 'bg-primary/5' }]} />
       <div className="max-w-5xl mx-auto w-full flex flex-col flex-1 min-h-0">
-        {/* Header */}
         <div className="mb-4 flex items-center justify-between">
           <Link
             to={`/results/${id}`}
@@ -254,7 +272,6 @@ const Chat = () => {
           </div>
         </div>
 
-        {/* Messages */}
         <Card glass className="flex-1 min-h-0 overflow-y-auto p-4 mb-4" ref={chatContainerRef}>
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
@@ -270,16 +287,11 @@ const Chat = () => {
                   </div>
                 )
               })}
-              {streaming && (
-                <div className="flex justify-start">
-                  <Spinner className="w-4 h-4" />
-                </div>
-              )}
+              {streaming && <TypingIndicator dotRefs={dotRefs.current} />}
             </div>
           )}
         </Card>
 
-        {/* Input */}
         <form onSubmit={sendMessage} className="flex gap-3">
           <input
             type="text"

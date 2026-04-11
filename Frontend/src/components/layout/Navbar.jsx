@@ -1,7 +1,12 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useUser, useClerk } from '@clerk/react'
+import { useGSAP } from '@gsap/react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Logo from '../ui/Logo'
+
+gsap.registerPlugin(ScrollTrigger)
 import ThemeToggle from '../ui/ThemeToggle'
 import Button from '../ui/Button'
 import NavLink from './NavLink'
@@ -31,7 +36,6 @@ const UserActions = ({ isSignedIn, user, onSignOut }) => {
       </Link>
     )
   }
-
   return (
     <div className="hidden md:flex items-center gap-3">
       <span className="text-sm text-muted-foreground">
@@ -64,11 +68,52 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false)
   const { isSignedIn, user } = useUser()
   const { signOut } = useClerk()
+  const navRef = useRef(null)
+  const mobileMenuRef = useRef(null)
 
   const visibleLinks = NAV_LINKS.filter(l => !l.auth || isSignedIn)
 
+  useGSAP(() => {
+    if (!navRef.current) return
+    const mm = gsap.matchMedia()
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      ScrollTrigger.create({
+        trigger: document.body,
+        start: 'top top',
+        onUpdate: (self) => {
+          if (self.scroll().y > 50) {
+            gsap.to(navRef.current, {
+              backdropFilter: 'blur(12px)',
+              backgroundColor: 'rgba(var(--background-rgb, 241 240 229), 0.8)',
+              duration: 0.3,
+            })
+          } else {
+            gsap.to(navRef.current, {
+              backdropFilter: 'blur(0px)',
+              backgroundColor: 'transparent',
+              duration: 0.3,
+            })
+          }
+        },
+      })
+    })
+  }, { scope: navRef })
+
+  useGSAP(() => {
+    if (!mobileMenuRef.current) return
+    const mm = gsap.matchMedia()
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      if (menuOpen) {
+        gsap.fromTo(mobileMenuRef.current,
+          { y: -100, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.3, ease: 'power2.out' }
+        )
+      }
+    })
+  }, { scope: mobileMenuRef })
+
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-xl bg-background/70 border-b border-white/10 dark:border-white/5">
+    <nav ref={navRef} className="sticky top-0 z-50 backdrop-blur-xl bg-background/70 border-b border-border">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="shrink-0">
@@ -95,12 +140,14 @@ const Navbar = () => {
         </div>
 
         {menuOpen && (
-          <MobileMenu
-            links={visibleLinks}
-            isSignedIn={isSignedIn}
-            onClose={() => setMenuOpen(false)}
-            onSignOut={signOut}
-          />
+          <div ref={mobileMenuRef}>
+            <MobileMenu
+              links={visibleLinks}
+              isSignedIn={isSignedIn}
+              onClose={() => setMenuOpen(false)}
+              onSignOut={signOut}
+            />
+          </div>
         )}
       </div>
     </nav>

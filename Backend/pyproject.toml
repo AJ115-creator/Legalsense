@@ -28,6 +28,7 @@ dependencies = [
     "langfuse>=4.0.6",
     "fastembed>=0.8.0",
     "ragas>=0.4.3,<0.5",
+    "litellm>=1.0.0",
     # OCR fallback for scanned / Hindi legal PDFs.
     # Pinned exactly: 3.0.1 has an MKLDNN memory leak with device=cpu (Issue #15631).
     # 3.3.3 (Jan 2026) is post-fix and battle-tested.

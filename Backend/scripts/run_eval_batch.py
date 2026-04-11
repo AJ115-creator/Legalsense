@@ -109,9 +109,6 @@ async def main(limit: int) -> int:
     if not settings.REDIS_URL:
         logger.error("REDIS_URL not set — eval data lives in Redis")
         return 1
-    if not settings.GROQ_API_KEY:
-        logger.error("GROQ_API_KEY not set — needed for judge LLM")
-        return 1
 
     langfuse = Langfuse(
         public_key=settings.LANGFUSE_PUBLIC_KEY,
