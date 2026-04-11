@@ -18,11 +18,9 @@ from langchain_community.embeddings import FastEmbedEmbeddings
 from ragas import EvaluationDataset, evaluate
 from ragas.embeddings.base import BaseRagasEmbedding
 from ragas.llms import llm_factory
-from ragas.metrics.collections import (
-    AnswerRelevancy,
-    ContextPrecisionWithoutReference,
-    Faithfulness,
-)
+from ragas.metrics._answer_relevance import AnswerRelevancy
+from ragas.metrics._context_precision import LLMContextPrecisionWithoutReference
+from ragas.metrics._faithfulness import Faithfulness
 
 from app.core.config import settings
 
@@ -100,15 +98,17 @@ def evaluate_traces(traces: list[dict]) -> list[dict]:
     )
 
     metrics = [
-        Faithfulness(llm=judge_llm),
-        AnswerRelevancy(llm=judge_llm, embeddings=judge_embeddings),
-        ContextPrecisionWithoutReference(llm=judge_llm),
+        Faithfulness(),
+        AnswerRelevancy(),
+        LLMContextPrecisionWithoutReference(),
     ]
 
     logger.info(f"Running Ragas on {len(samples)} traces with {len(metrics)} metrics")
     result = evaluate(
         dataset=dataset,
         metrics=metrics,
+        llm=judge_llm,
+        embeddings=judge_embeddings,
         show_progress=False,
         raise_exceptions=False,
     )
