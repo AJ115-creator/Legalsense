@@ -6,7 +6,7 @@ Reference-free metrics (no ground-truth labels needed):
   - ContextPrecision:    is the BGE reranker ordering chunks well?
 
 Judge model: HuggingFace Mistral-Small-3.1-24B-Instruct via LiteLLM.
-Embeddings:  fastembed BAAI/bge-small-v1.5 (already on disk for sem cache).
+Embeddings:  fastembed BAAI/bge-small-en-v1.5 (already on disk for sem cache).
 """
 
 import logging
@@ -41,7 +41,7 @@ def _get_judge():
         )
     if _judge_embeddings is None:
         _judge_embeddings = LangchainEmbeddingsWrapper(
-            FastEmbedEmbeddings(model_name="BAAI/bge-small-v1.5")
+            FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
         )
     return _judge_llm, _judge_embeddings
 
