@@ -62,6 +62,7 @@ def _get_judge():
         _judge_llm = llm_factory(
             f"huggingface/{settings.HF_JUDGE_MODEL}",
             provider="litellm",
+            client=litellm.completion,
         )
     if _judge_embeddings is None:
         _judge_embeddings = ModernFastEmbedWrapper(model_name="BAAI/bge-small-en-v1.5")
