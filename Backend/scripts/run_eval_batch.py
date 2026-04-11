@@ -35,7 +35,7 @@ logger = logging.getLogger("rag_eval_batch")
 METRIC_NAMES = [
     "faithfulness",
     "answer_relevancy",
-    "llm_context_precision_without_reference",
+    "context_precision_without_reference",
 ]
 
 

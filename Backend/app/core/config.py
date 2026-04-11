@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     PINECONE_INDEX: str = "legalsense"
     HUGGINGFACE_API_KEY: str = ""
 
-    HF_JUDGE_MODEL: str = "mistralai/Mistral-Small-3.1-24B-Instruct"
+    HF_JUDGE_MODEL: str = "mistralai/Mistral-Small-24B-Instruct-2501"
 
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     # Separate model for the legal-doc classifier — independent rate-limit pool on Groq

@@ -18,9 +18,7 @@ from langchain_community.embeddings import FastEmbedEmbeddings
 from ragas import EvaluationDataset, evaluate
 from ragas.embeddings.base import BaseRagasEmbedding
 from ragas.llms import llm_factory
-from ragas.metrics._answer_relevance import AnswerRelevancy
-from ragas.metrics._context_precision import LLMContextPrecisionWithoutReference
-from ragas.metrics._faithfulness import Faithfulness
+from ragas.metrics.collections import Faithfulness, AnswerRelevancy, ContextPrecisionWithoutReference
 
 from app.core.config import settings
 
@@ -57,10 +55,13 @@ def _get_judge():
     global _judge_llm, _judge_embeddings
     if _judge_llm is None:
         litellm.api_key = settings.HUGGINGFACE_API_KEY
+        # Safety: Drop params that the judge model provider (HF) doesn't understand.
+        # This prevents Ragas' internal metadata from causing API errors.
+        litellm.drop_params = True
+        
         _judge_llm = llm_factory(
             f"huggingface/{settings.HF_JUDGE_MODEL}",
             provider="litellm",
-            client=litellm.completion,
         )
     if _judge_embeddings is None:
         _judge_embeddings = ModernFastEmbedWrapper(model_name="BAAI/bge-small-en-v1.5")
@@ -98,12 +99,16 @@ def evaluate_traces(traces: list[dict]) -> list[dict]:
     )
 
     metrics = [
-        Faithfulness(),
-        AnswerRelevancy(),
-        LLMContextPrecisionWithoutReference(),
+        Faithfulness(llm=judge_llm),
+        AnswerRelevancy(llm=judge_llm, embeddings=judge_embeddings),
+        ContextPrecisionWithoutReference(llm=judge_llm),
     ]
 
     logger.info(f"Running Ragas on {len(samples)} traces with {len(metrics)} metrics")
+    
+    # Hugging Face Serverless API can return "Model is loading" errors.
+    # We use evaluate() which supports internal retries if possible, 
+    # but we also set raise_exceptions=False to prevent script crashes.
     result = evaluate(
         dataset=dataset,
         metrics=metrics,
@@ -115,6 +120,8 @@ def evaluate_traces(traces: list[dict]) -> list[dict]:
 
     df = result.to_pandas()
     metric_names = [m.name for m in metrics]
+    # Ragas metric names can be different from class names (e.g., lowercase)
+    # We'll use the .name attribute which is what to_pandas uses as columns.
     logger.info(f"Ragas metric columns: {metric_names}")
 
     out = []
