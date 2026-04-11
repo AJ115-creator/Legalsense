@@ -97,16 +97,19 @@ const HeroSection = () => {
     })
 
     if (ctaRef.current) {
-      const ctaBtn = ctaRef.current.querySelector('button')
+      const ctaBtn = ctaRef.current.querySelector('a')
       if (ctaBtn) {
-        gsap.to(ctaBtn, {
-          boxShadow: '0 0 20px var(--primary), 0 0 40px var(--primary)',
-          duration: 1.5,
-          yoyo: true,
-          repeat: -1,
-          ease: 'power1.inOut',
-          delay: 1.5,
-        })
+        gsap.fromTo(ctaBtn, 
+          { boxShadow: '0 0 0px var(--primary), 0 0 0px var(--primary)' },
+          {
+            boxShadow: '0 0 20px var(--primary), 0 0 40px var(--primary)',
+            duration: 1.5,
+            yoyo: true,
+            repeat: -1,
+            ease: 'power1.inOut',
+            delay: 1.5,
+          }
+        )
       }
     }
   }, { scope: sectionRef })
