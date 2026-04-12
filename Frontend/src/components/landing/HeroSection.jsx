@@ -5,6 +5,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Button from '../ui/Button'
 import AuroraGradient from '../ui/AuroraGradient'
+import FloatingLegalArt from '../ui/FloatingLegalArt'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -119,6 +120,7 @@ const HeroSection = () => {
       <div ref={auraRef}>
         <AuroraGradient variant="hero" />
       </div>
+      <FloatingLegalArt variant="hero" />
       <div className="max-w-4xl mx-auto text-center">
 
         <div

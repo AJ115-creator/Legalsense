@@ -12,10 +12,6 @@ class Settings(BaseSettings):
 
     PINECONE_API_KEY: str
     PINECONE_INDEX: str = "legalsense"
-    HUGGINGFACE_API_KEY: str = ""
-
-    HF_JUDGE_MODEL: str = "mistralai/Mistral-Small-24B-Instruct-2501"
-
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     # Separate model for the legal-doc classifier — independent rate-limit pool on Groq
     # (per-model pools, not per-key), 12x cheaper input/output, deterministic temp=0.0.
@@ -39,12 +35,12 @@ class Settings(BaseSettings):
     LANGFUSE_PUBLIC_KEY: str = ""
     LANGFUSE_BASE_URL: str = "https://cloud.langfuse.com"
 
+    # Guardrails
+    GUARDRAILS_ENABLED: bool = True
+
     # Semantic cache
     CACHE_SIMILARITY_THRESHOLD: float = 0.95
     CACHE_TTL: int = 3600  # seconds
-
-    # RAG eval — store retrieved contexts per trace_id for batch eval
-    EVAL_DATA_TTL: int = 86400  # 24h, must outlive eval batch cron interval (6h)
 
     @property
     def allowed_issuers(self) -> list[str]:

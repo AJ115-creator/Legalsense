@@ -40,6 +40,10 @@ async def lifespan(app: FastAPI):
     if settings.LANGFUSE_SECRET_KEY and settings.LANGFUSE_PUBLIC_KEY:
         feedback_module.get_langfuse()
 
+    if settings.GUARDRAILS_ENABLED and settings.GROQ_API_KEY:
+        from app.services.guardrails_service import warm_guards
+        warm_guards()
+
     yield
 
     # ---- shutdown ----

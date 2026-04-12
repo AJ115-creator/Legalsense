@@ -11,26 +11,60 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+async def _safe_send_and_close(
+    websocket: WebSocket, payload: dict, code: int = 4001
+) -> None:
+    """Best-effort error send + close. Swallow errors — socket may already be dead."""
+    try:
+        await websocket.send_json(payload)
+    except Exception:
+        pass
+    try:
+        await websocket.close(code=code)
+    except Exception:
+        pass
+
+
 async def _authenticate_ws(websocket: WebSocket) -> str | None:
     """Authenticate WebSocket via first-frame token (not URL query param)."""
     await websocket.accept()
     try:
-        # Wait for auth frame (5s timeout handled by client)
         raw = await websocket.receive_text()
-        msg = json.loads(raw)
-        if msg.get("type") != "auth" or not msg.get("token"):
-            await websocket.send_json(
-                {"type": "auth_error", "detail": "Missing auth frame"}
-            )
-            await websocket.close(code=4001)
-            return None
-        user_id = await _verify_token(msg["token"])
-        await websocket.send_json({"type": "auth_ok"})
-        return user_id
-    except Exception:
-        await websocket.send_json({"type": "auth_error", "detail": "Invalid token"})
-        await websocket.close(code=4001)
+    except WebSocketDisconnect:
         return None
+    except Exception:
+        await _safe_send_and_close(
+            websocket, {"type": "auth_error", "detail": "Invalid auth frame"}
+        )
+        return None
+
+    try:
+        msg = json.loads(raw)
+    except json.JSONDecodeError:
+        await _safe_send_and_close(
+            websocket, {"type": "auth_error", "detail": "Malformed auth frame"}
+        )
+        return None
+
+    if msg.get("type") != "auth" or not msg.get("token"):
+        await _safe_send_and_close(
+            websocket, {"type": "auth_error", "detail": "Missing auth frame"}
+        )
+        return None
+
+    try:
+        user_id = await _verify_token(msg["token"])
+    except Exception:
+        await _safe_send_and_close(
+            websocket, {"type": "auth_error", "detail": "Invalid token"}
+        )
+        return None
+
+    try:
+        await websocket.send_json({"type": "auth_ok"})
+    except Exception:
+        return None
+    return user_id
 
 
 @router.websocket("/{document_id}")
