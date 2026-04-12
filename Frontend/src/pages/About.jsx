@@ -44,7 +44,7 @@ const MissionSection = () => {
       <div className="max-w-3xl mx-auto text-center">
         <SectionHeading
           title="Why LegalSense Exists"
-          subtitle="India has 4.7 crore pending court cases. Millions of people receive legal documents they can't understand. We're changing that."
+          subtitle="India has 5.58 crore pending court cases. Millions of people receive legal documents they can't understand. We're changing that."
         />
         <Card glass className="text-left">
           <p className="text-foreground leading-[1.7] mb-4">
@@ -53,8 +53,19 @@ const MissionSection = () => {
           <p className="text-foreground leading-[1.7] mb-4">
             LegalSense bridges that gap. Upload any legal document, and our AI breaks it down — referencing actual Indian laws (BNS, BNSS, CPC, IPC, specific State Acts) — so you know exactly where you stand.
           </p>
-          <p className="text-foreground leading-[1.7]">
+          <p className="text-foreground leading-[1.7] mb-4">
             We don't sugarcoat. If your situation is serious, we'll tell you. If you need a lawyer urgently, we'll say that too.
+          </p>
+          <p className="text-xs text-muted-foreground/70 mt-2">
+            Source:{' '}
+            <a href="https://njdg.ecourts.gov.in/" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
+              National Judicial Data Grid
+            </a>
+            {' '}&{' '}
+            <a href="https://en.wikipedia.org/wiki/Pendency_of_court_cases_in_India" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
+              Wikipedia
+            </a>
+            {' '}(as of April 2026)
           </p>
         </Card>
       </div>
